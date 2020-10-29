@@ -1,0 +1,51 @@
+{
+  "name": "mini-waterfall-simulation",
+  "version": "1.0.0",
+  "description": "A model for a Monte Carlo simulation demonstrating the effect of a \"mini-waterfall\" process on sustainability.",
+  "main": "dist/index.js",
+  "scripts": {
+    "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
+    "lint": "tslint -p tsconfig.json",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint",
+    "preversion": "npm run lint",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags"
+  },
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SalmonMode/mini-waterfall-simulation.git"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "keywords": [
+    "waterfall",
+    "mini-waterfall",
+    "agile",
+    "scrum",
+    "simulation",
+    "monte",
+    "carlo",
+    "testing"
+  ],
+  "author": "Chris NeJame",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SalmonMode/mini-waterfall-simulation/issues"
+  },
+  "homepage": "https://github.com/SalmonMode/mini-waterfall-simulation#readme",
+  "devDependencies": {
+    "prettier": "^2.1.2",
+    "tslint": "^6.1.3",
+    "tslint-config-prettier": "^1.18.0",
+    "typescript": "^4.0.3"
+  },
+  "dependencies": {
+    "@types/probability-distributions": "^0.1.0",
+    "probability-distributions": "^0.9.1"
+  }
+}
