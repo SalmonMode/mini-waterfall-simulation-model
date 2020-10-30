@@ -151,7 +151,16 @@ export abstract class Schedule {
       }
       if (i === regressionTestDayCount) {
         // first actual day of sprint, so sprint planning
-        schedule.scheduleMeeting(new SprintPlanning(0, 120, i));
+        let remainingDuration = 120;
+        while (remainingDuration > 0) {
+          const availableDuration = schedule.availableTimeSlots[0].duration;
+          let nextEventDuration = remainingDuration - availableDuration;
+          if (nextEventDuration <= 0) {
+            nextEventDuration = remainingDuration;
+          }
+          remainingDuration -= nextEventDuration;
+          schedule.scheduleMeeting(new SprintPlanning(schedule.availableTimeSlots[0].startTime, nextEventDuration, i));
+        }
       } else {
         schedule.scheduleMeeting(new DailyStandup(0, 15, i));
       }

@@ -11,6 +11,8 @@ interface WorkerMinuteSnapshot {
   redundantTicketWork: number;
   codeReview: number;
   checking: number;
+  fluffChecking: number;
+  nonFluffChecking: number;
   regressionTesting: number;
   automation: number;
   nothing: number;
@@ -122,23 +124,13 @@ export class Simulation {
     this.currentDayTime = this.dayTimeFromDayAndTime(this.currentDay, this.currentTime);
     while (this.currentDayTime <= this.simulationEndDayTime && this.currentDayTime >= 0) {
       // process potentially completed work first
-      if (this.getNextCheckInTime()! > 0 && this.getNextCheckInTime()! < this.currentDayTime) {
-        throw new Error();
-      }
       this.processProgrammerCompletedWork();
       this.processTesterCompletedWork();
-      if (this.getNextCheckInTime()! > 0 && this.getNextCheckInTime()! < this.currentDayTime) {
-        throw new Error();
-      }
-
       // process handing out new work after all available tickets have been
       // determined
       this.handOutNewProgrammerWork();
       this.backfillTesterScheduleForTimeTheySpentDoingNothing();
       this.handOutNewTesterWork();
-      if (this.getNextCheckInTime()! > 0 && this.getNextCheckInTime()! < this.currentDayTime) {
-        throw new Error();
-      }
       nextCheckInTime = this.getNextCheckInTime()!;
       if (nextCheckInTime === this.currentDayTime) {
         throw Error('DayTime would not progress');
@@ -169,27 +161,49 @@ export class Simulation {
   }
   projectDeadlock() {
     /*
-      For each of the tickets in the done stack, consider how much time it took to do a
-      complete successful check of the ones that weren't automated. Consider then how much
-      this time would be refined (according to this.checkRefinement), and this would be
-      the amount of additional time that needs to be allotted for regression checking.
+    For each of the tickets in the done stack, consider how much time it took to do a
+    complete successful check of the ones that weren't automated. Consider then how much
+    this time would be refined (according to this.checkRefinement), and this would be
+    the amount of additional time that needs to be allotted for regression checking.
 
-      Consider then the percentage of available checking time that was spent doing
-      complete check runs that wouldn't be automated. As the projection goes forward,
-      sprint by sprint, the amount of new manual regression checking time will be
-      subtracted from the remaining available check time, and the previously mentioned
-      percentage will be used to estimate how much manual checking time would need to be
-      factored in for how the regression checking period grows for the next sprint.
+    Consider then the percentage of available checking time that was spent doing
+    complete check runs that wouldn't be automated. As the projection goes forward,
+    sprint by sprint, the amount of new manual regression checking time will be
+    subtracted from the remaining available check time, and the previously mentioned
+    percentage will be used to estimate how much manual checking time would need to be
+    factored in for how the regression checking period grows for the next sprint.
 
-      This will be projected forward, counting each sprint that could theoretically be
-      done, until the remaining available time for checks is less than it would take to
-      do a single checking iteration for a "small" ticket, which, for the purposes of this
-      projection, will be considered to be 25% of this.maxFullRunTesterWorkTimeInHours.
+    In addition to this, when tickets aren't finished in a sprint and time was spent on
+    checking iterations of them, the testers will be unable to automate them, so this
+    checking time is lost and can't be saved through automation. It is essentially
+    fluff, and the percentage of checking time spent on this will be used to estimate
+    how much of the potential checking time would be lost each sprint. If all tickets
+    that are started in a sprint get finished, then this will be 0. But if it's not 0,
+    then it means the programmers are getting an opportunity to squeeze in additional
+    work that only applies to subsequent sprints and so it means that there's work the
+    testers can't get ahead of in the current sprint, so it will cost them time in the
+    future.
 
-      When that point is reached, it would be unreasonable to expect the testers to even
-      have the opportunity to try and check something, and thus, progress will be in a
-      deadlock.
-      */
+    This will be projected forward, counting each sprint that could theoretically be
+    done, until the remaining available time for checks is less than it would take to
+    do a single checking iteration for a "small" ticket, which, for the purposes of this
+    projection, will be considered to be 25% of this.maxFullRunTesterWorkTimeInHours.
+
+    When that point is reached, it would be unreasonable to expect the testers to even
+    have the opportunity to try and check something, and thus, progress will be in a
+    deadlock.
+    */
+    if (this.doneStack.length === 0) {
+      // Development was so inefficient that literally 0 tickets were finished in the
+      // simulated sprint, which means there's not enough data to project into the
+      // future to see when a deadlock would occur. This sets the projected sprint count
+      // to Infinity to reflect that it would take so long to even get anything done in
+      // the first place that it's not even worth considering.
+      this.projectedSprintCountUntilDeadlock = Infinity;
+      return;
+    }
+    const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
+      .checking;
     const totalSuccessfulCheckTime = this.doneStack.reduce(
       (totalTime, currentTicket) => totalTime + currentTicket.fullTesterWorkIterationTime,
       0,
@@ -198,13 +212,18 @@ export class Simulation {
       (totalTime, currentTicket) => totalTime + currentTicket.fullTesterWorkIterationTime,
       0,
     );
+    // time spent checking tickets that wouldn't be finished this sprint
+    const fluffCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
+      .fluffChecking;
+    const percentageOfCheckTimeSpentOnFluffChecking = fluffCheckingMinutes / totalCheckingMinutes;
     const newManualCheckTime = totalSuccessfulCheckTime - newManualCheckTimeEliminatedByAutomation;
-    if (newManualCheckTime <= 0) {
-      // configuration is theoretically sustainable
+    if (newManualCheckTime <= 0 && fluffCheckingMinutes <= 0) {
+      // configuration is theoretically sustainable, as it means all tickets that were
+      //planned for a sprint were both completed and had the checking of them automated.
       this.projectedSprintCountUntilDeadlock = null;
+      return;
     }
-    const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
-      .checking;
+
     const percentageOfCheckTimeSpentOnNewManualChecking = newManualCheckTime / totalCheckingMinutes;
     let remainingCheckingMinutes = totalCheckingMinutes;
     let sprintsUntilDeadlock = 0;
@@ -213,8 +232,11 @@ export class Simulation {
       let totalNewManualCheckTime = Math.round(
         percentageOfCheckTimeSpentOnNewManualChecking * remainingCheckingMinutes,
       );
+      let totalNewFluffCheckTime = Math.round(percentageOfCheckTimeSpentOnFluffChecking * remainingCheckingMinutes);
       let projectedRefinedNewRegressionCheckMinutes = (1 - this.checkRefinement) * totalNewManualCheckTime;
+
       remainingCheckingMinutes -= projectedRefinedNewRegressionCheckMinutes;
+      remainingCheckingMinutes -= totalNewFluffCheckTime;
       sprintsUntilDeadlock++;
     }
     this.projectedSprintCountUntilDeadlock = sprintsUntilDeadlock;
@@ -425,6 +447,7 @@ export class Simulation {
           // possiblyFinishedTicket.needsAutomation = true;
           this.doneStack.push(possiblyFinishedTicket);
           this.needsAutomationStack.push(possiblyFinishedTicket);
+          possiblyFinishedTicket.unfinished = false;
         }
       }
     }
@@ -652,6 +675,8 @@ export class Simulation {
           codeReview: worker.getCodeReviewMinutesAtDayTime(i),
           // recovery: worker.getProductivityRecoveryMinutesAtDayTime(i),
           checking: worker.getCheckingMinutesAtDayTime(i),
+          fluffChecking: worker.getFluffCheckingMinutesAtDayTime(i),
+          nonFluffChecking: worker.getNonFluffCheckingMinutesAtDayTime(i),
           regressionTesting: worker.getRegressionTestingMinutesAtDayTime(i),
           automation: worker.getAutomationMinutesAtDayTime(i),
           nothing: worker.getNothingMinutesAtDayTime(i),

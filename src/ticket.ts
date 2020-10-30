@@ -11,6 +11,7 @@ export class Ticket {
   public needsAutomation: boolean;
   public fresh: boolean;
   public firstIteration: boolean = true;
+  public unfinished: boolean = true;
   constructor(
     public number: number,
     public priority: number,

@@ -1,6 +1,6 @@
 import { CustomEventsByDayList } from './CustomEventsByDayList';
-import { ScheduledEvent } from './events';
-import { ProgrammerSchedule, QaSchedule, Schedule } from './schedule';
+import { ScheduledTicketWork } from './events';
+import { ProgrammerSchedule, QaSchedule } from './schedule';
 import { Ticket } from './ticket';
 
 interface WorkerMinutes {
@@ -23,6 +23,8 @@ interface WorkerMinutes {
   // handy if other meetings are implemented.
   productivityRecoveryMinutes: number[];
   checkingMinutes: number[];
+  fluffCheckingMinutes: number[];
+  nonFluffCheckingMinutes: number[];
   productiveCheckingTicketWorkMinutes: number[];
   redundantCheckingTicketWorkMinutes: number[];
   regressionTestingMinutes: number[];
@@ -74,6 +76,8 @@ export abstract class Worker implements WorkerMinutes {
   // handy if other meetings are implemented.
   productivityRecoveryMinutes: number[] = [];
   checkingMinutes: number[] = [];
+  fluffCheckingMinutes: number[] = [];
+  nonFluffCheckingMinutes: number[] = [];
   productiveCheckingTicketWorkMinutes: number[] = [];
   redundantCheckingTicketWorkMinutes: number[] = [];
   regressionTestingMinutes: number[] = [];
@@ -108,6 +112,15 @@ export abstract class Worker implements WorkerMinutes {
         let eventMinutes = Array.from(Array(event.duration).keys()).map((i) => i + event.rawStartDayTime + 1);
         for (let category of event.relevantMinutes) {
           this[category as keyof WorkerMinutes]!.push(...eventMinutes);
+        }
+        if (this instanceof Tester) {
+          if (event.relevantMinutes.includes('checkingMinutes')) {
+            if ((<ScheduledTicketWork>event).ticket.unfinished) {
+              this.fluffCheckingMinutes.push(...eventMinutes);
+            } else {
+              this.nonFluffCheckingMinutes.push(...eventMinutes);
+            }
+          }
         }
       }
     }
@@ -145,6 +158,12 @@ export abstract class Worker implements WorkerMinutes {
   }
   getCheckingMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.checkingMinutes, dayTime);
+  }
+  getFluffCheckingMinutesAtDayTime(dayTime: number) {
+    return this.getMinutesOfTypeAtDayTime(this.fluffCheckingMinutes, dayTime);
+  }
+  getNonFluffCheckingMinutesAtDayTime(dayTime: number) {
+    return this.getMinutesOfTypeAtDayTime(this.nonFluffCheckingMinutes, dayTime);
   }
   getProductiveCheckingMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.productiveCheckingTicketWorkMinutes, dayTime);
