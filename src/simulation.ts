@@ -333,11 +333,34 @@ export class Simulation {
   }
   getNextCheckInTime(): number | null {
     let earliestWorker = this.getWorkerWithEarliestUpcomingCheckIn();
+    if (earliestWorker instanceof Tester && this.noWorkForTesters && earliestWorker.nextWorkIterationCompletionCheckIn === null && this.allProgrammersAreDoneForTheSprint) {
+      // The worker with the earliest check-in was found to be a tester, but there's no
+      // available work for them, they have nothing to turn in, and all the programmers
+      // are done for the rest of the sprint so no new work will become available. Since
+      // in this case, only a tester that was just now becoming available would be the
+      // earliest worker. But since there's no new work for any of the testers to do, it
+      // must mean that the simulation can be finished.
+      return -1;
+    }
     if (earliestWorker.nextWorkIterationCompletionCheckIn! > this.currentDayTime) {
       return earliestWorker.nextWorkIterationCompletionCheckIn;
     } else {
       return earliestWorker.nextAvailabilityCheckIn;
     }
+  }
+  get noWorkForTesters(): boolean {
+    return this.qaStack.length === 0 && this.needsAutomationStack.length === 0;
+  }
+  get allProgrammersAreDoneForTheSprint(): boolean {
+    for (let prog of this.programmers) {
+      if (prog.nextWorkIterationCompletionCheckIn !== -1) {
+        return false;
+      }
+      if (prog.nextAvailabilityCheckIn !== -1) {
+        return false;
+      }
+    }
+    return true;
   }
   getWorkerWithEarliestUpcomingCheckIn(): Tester | Programmer {
     // Skip ahead to the next relevant point in time. This will either be the
