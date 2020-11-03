@@ -57,7 +57,7 @@ export class Simulation {
   codeReviewStack: Ticket[] = [];
   stackTimelineHashMap: StackLogEntry[] = [];
   stackTimelineSets: StackLogEntry[] = [];
-  projectedSprintCountUntilDeadlock?: number | null = undefined;
+  private secretProjectedSprintCountUntilDeadlock!: number | null;
   programmers!: Programmer[];
   testers!: Tester[];
   workers!: (Programmer | Tester)[];
@@ -101,6 +101,12 @@ export class Simulation {
       this.maxQaAutomationTime,
       this.averagePassBackCount,
     );
+  }
+  get projectedSprintCountUntilDeadlock(): number | null {
+    if (this.secretProjectedSprintCountUntilDeadlock === undefined) {
+      throw Error("Simulation must simulate to establish a projected deadlock");
+    }
+    return this.secretProjectedSprintCountUntilDeadlock;
   }
   prepareWorkers() {
     const customEventsByDay = this.customEventsByDay!.slice();
@@ -210,7 +216,7 @@ export class Simulation {
       // future to see when a deadlock would occur. This sets the projected sprint count
       // to Infinity to reflect that it would take so long to even get anything done in
       // the first place that it's not even worth considering.
-      this.projectedSprintCountUntilDeadlock = Infinity;
+      this.secretProjectedSprintCountUntilDeadlock = Infinity;
       return;
     }
     const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
@@ -231,7 +237,7 @@ export class Simulation {
     if (newManualCheckTime <= 0 && fluffCheckingMinutes <= 0) {
       // configuration is theoretically sustainable, as it means all tickets that were
       //planned for a sprint were both completed and had the checking of them automated.
-      this.projectedSprintCountUntilDeadlock = null;
+      this.secretProjectedSprintCountUntilDeadlock = null;
       return;
     }
 
@@ -250,7 +256,7 @@ export class Simulation {
       remainingCheckingMinutes -= totalNewFluffCheckTime;
       sprintsUntilDeadlock++;
     }
-    this.projectedSprintCountUntilDeadlock = sprintsUntilDeadlock;
+    this.secretProjectedSprintCountUntilDeadlock = sprintsUntilDeadlock;
   }
   dayTimeFromDayAndTime(day: number, time: number) {
     // given a day and a time, return the dayTime
