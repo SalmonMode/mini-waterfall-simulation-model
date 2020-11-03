@@ -13,6 +13,12 @@ interface WorkerMinuteSnapshot {
   checking: number;
   fluffChecking: number;
   nonFluffChecking: number;
+  productiveProgrammingTicketWorkMinutes: number;
+  redundantProgrammingTicketWorkMinutes: number;
+  productiveCodeReviewTicketWorkMinutes: number;
+  redundantCodeReviewTicketWorkMinutes: number;
+  productiveCheckingTicketWorkMinutes: number;
+  redundantCheckingTicketWorkMinutes: number;
   regressionTesting: number;
   automation: number;
   nothing: number;
@@ -700,6 +706,12 @@ export class Simulation {
           checking: worker.getCheckingMinutesAtDayTime(i),
           fluffChecking: worker.getFluffCheckingMinutesAtDayTime(i),
           nonFluffChecking: worker.getNonFluffCheckingMinutesAtDayTime(i),
+          productiveProgrammingTicketWorkMinutes: worker.getProductiveProgrammingMinutesAtDayTime(i),
+          redundantProgrammingTicketWorkMinutes: worker.getRedundantProgrammingMinutesAtDayTime(i),
+          productiveCodeReviewTicketWorkMinutes: worker.getProductiveCodeReviewMinutesAtDayTime(i),
+          redundantCodeReviewTicketWorkMinutes: worker.getRedundantCodeReviewMinutesAtDayTime(i),
+          productiveCheckingTicketWorkMinutes: worker.getProductiveCheckingMinutesAtDayTime(i),
+          redundantCheckingTicketWorkMinutes: worker.getRedundantCheckingMinutesAtDayTime(i),
           regressionTesting: worker.getRegressionTestingMinutesAtDayTime(i),
           automation: worker.getAutomationMinutesAtDayTime(i),
           nothing: worker.getNothingMinutesAtDayTime(i),

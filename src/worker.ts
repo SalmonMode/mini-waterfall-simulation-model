@@ -144,7 +144,7 @@ export abstract class Worker implements WorkerMinutes {
   getProductiveCodeReviewMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.productiveCodeReviewTicketWorkMinutes, dayTime);
   }
-  geRedundantCodeReviewMinutesAtDayTime(dayTime: number) {
+  getRedundantCodeReviewMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.redundantCodeReviewTicketWorkMinutes, dayTime);
   }
   getProgrammingMinutesAtDayTime(dayTime: number) {
@@ -153,7 +153,7 @@ export abstract class Worker implements WorkerMinutes {
   getProductiveProgrammingMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.productiveProgrammingTicketWorkMinutes, dayTime);
   }
-  geRedundantProgrammingMinutesAtDayTime(dayTime: number) {
+  getRedundantProgrammingMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.redundantProgrammingTicketWorkMinutes, dayTime);
   }
   getCheckingMinutesAtDayTime(dayTime: number) {
@@ -168,7 +168,7 @@ export abstract class Worker implements WorkerMinutes {
   getProductiveCheckingMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.productiveCheckingTicketWorkMinutes, dayTime);
   }
-  geRedundantCheckingMinutesAtDayTime(dayTime: number) {
+  getRedundantCheckingMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.redundantCheckingTicketWorkMinutes, dayTime);
   }
   getProductivityRecoveryMinutesAtDayTime(dayTime: number) {
