@@ -9,9 +9,13 @@ interface WorkerMinutes {
   productiveTicketWorkMinutes: number[];
   redundantTicketWorkMinutes: number[];
   programmingMinutes: number[];
+  fluffProgrammingMinutes: number[];
+  nonFluffProgrammingMinutes: number[];
   productiveProgrammingTicketWorkMinutes: number[];
   redundantProgrammingTicketWorkMinutes: number[];
   codeReviewMinutes: number[];
+  fluffCodeReviewMinutes: number[];
+  nonFluffCodeReviewMinutes: number[];
   productiveCodeReviewTicketWorkMinutes: number[];
   redundantCodeReviewTicketWorkMinutes: number[];
   // TODO: This array tracks minutes that were spent recovering from an interruption,
@@ -62,9 +66,13 @@ export abstract class Worker implements WorkerMinutes {
   productiveTicketWorkMinutes: number[] = [];
   redundantTicketWorkMinutes: number[] = [];
   programmingMinutes: number[] = [];
+  fluffProgrammingMinutes: number[] = [];
+  nonFluffProgrammingMinutes: number[] = [];
   productiveProgrammingTicketWorkMinutes: number[] = [];
   redundantProgrammingTicketWorkMinutes: number[] = [];
   codeReviewMinutes: number[] = [];
+  fluffCodeReviewMinutes: number[] = [];
+  nonFluffCodeReviewMinutes: number[] = [];
   productiveCodeReviewTicketWorkMinutes: number[] = [];
   redundantCodeReviewTicketWorkMinutes: number[] = [];
   // TODO: This array tracks minutes that were spent recovering from an interruption,
@@ -113,13 +121,25 @@ export abstract class Worker implements WorkerMinutes {
         for (let category of event.relevantMinutes) {
           this[category as keyof WorkerMinutes]!.push(...eventMinutes);
         }
-        if (this instanceof Tester) {
-          if (event.relevantMinutes.includes('checkingMinutes')) {
-            if ((<ScheduledTicketWork>event).ticket.unfinished) {
-              this.fluffCheckingMinutes.push(...eventMinutes);
-            } else {
-              this.nonFluffCheckingMinutes.push(...eventMinutes);
-            }
+        if (event.relevantMinutes.includes('programmingMinutes')) {
+          if ((<ScheduledTicketWork>event).ticket.unfinished) {
+            this.fluffProgrammingMinutes.push(...eventMinutes);
+          } else {
+            this.nonFluffProgrammingMinutes.push(...eventMinutes);
+          }
+        }
+        if (event.relevantMinutes.includes('codeReviewMinutes')) {
+          if ((<ScheduledTicketWork>event).ticket.unfinished) {
+            this.fluffCodeReviewMinutes.push(...eventMinutes);
+          } else {
+            this.nonFluffCodeReviewMinutes.push(...eventMinutes);
+          }
+        }
+        if (event.relevantMinutes.includes('checkingMinutes')) {
+          if ((<ScheduledTicketWork>event).ticket.unfinished) {
+            this.fluffCheckingMinutes.push(...eventMinutes);
+          } else {
+            this.nonFluffCheckingMinutes.push(...eventMinutes);
           }
         }
       }
@@ -141,6 +161,12 @@ export abstract class Worker implements WorkerMinutes {
   getCodeReviewMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.codeReviewMinutes, dayTime);
   }
+  getFluffCodeReviewMinutesAtDayTime(dayTime: number) {
+    return this.getMinutesOfTypeAtDayTime(this.fluffCodeReviewMinutes, dayTime);
+  }
+  getNonFluffCodeReviewMinutesAtDayTime(dayTime: number) {
+    return this.getMinutesOfTypeAtDayTime(this.nonFluffCodeReviewMinutes, dayTime);
+  }
   getProductiveCodeReviewMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.productiveCodeReviewTicketWorkMinutes, dayTime);
   }
@@ -149,6 +175,12 @@ export abstract class Worker implements WorkerMinutes {
   }
   getProgrammingMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.programmingMinutes, dayTime);
+  }
+  getFluffProgrammingMinutesAtDayTime(dayTime: number) {
+    return this.getMinutesOfTypeAtDayTime(this.fluffProgrammingMinutes, dayTime);
+  }
+  getNonFluffProgrammingMinutesAtDayTime(dayTime: number) {
+    return this.getMinutesOfTypeAtDayTime(this.nonFluffProgrammingMinutes, dayTime);
   }
   getProductiveProgrammingMinutesAtDayTime(dayTime: number) {
     return this.getMinutesOfTypeAtDayTime(this.productiveProgrammingTicketWorkMinutes, dayTime);

@@ -9,7 +9,12 @@ interface WorkerMinuteSnapshot {
   contextSwitching: number;
   productiveTicketWork: number;
   redundantTicketWork: number;
+  programming: number;
+  fluffProgramming: number;
+  nonFluffProgramming: number;
   codeReview: number;
+  fluffCodeReview: number;
+  nonFluffCodeReview: number;
   checking: number;
   fluffChecking: number;
   nonFluffChecking: number;
@@ -701,7 +706,12 @@ export class Simulation {
           contextSwitching: worker.getContextSwitchingMinutesAtDayTime(i),
           productiveTicketWork: worker.getProductiveTicketWorkMinutesAtDayTime(i),
           redundantTicketWork: worker.getRedundantTicketWorkMinutesAtDayTime(i),
+          programming: worker.getProgrammingMinutesAtDayTime(i),
+          fluffProgramming: worker.getFluffProgrammingMinutesAtDayTime(i),
+          nonFluffProgramming: worker.getNonFluffProgrammingMinutesAtDayTime(i),
           codeReview: worker.getCodeReviewMinutesAtDayTime(i),
+          fluffCodeReview: worker.getFluffCodeReviewMinutesAtDayTime(i),
+          nonFluffCodeReview: worker.getNonFluffCodeReviewMinutesAtDayTime(i),
           // recovery: worker.getProductivityRecoveryMinutesAtDayTime(i),
           checking: worker.getCheckingMinutesAtDayTime(i),
           fluffChecking: worker.getFluffCheckingMinutesAtDayTime(i),
