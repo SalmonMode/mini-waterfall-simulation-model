@@ -662,22 +662,16 @@ export class Simulation {
         if (daySchedule.day > this.currentDay) {
           break;
         }
-        for (let timeSlot of daySchedule.availableTimeSlots) {
+        while (daySchedule.availableTimeSlots.length > 0) {
+          const timeSlot = daySchedule.availableTimeSlots[0];
           if (daySchedule.day === this.currentDay && timeSlot.startTime >= this.currentTime) {
             break;
           }
-          if (
-            daySchedule.day === this.currentDay &&
-            timeSlot.startTime < this.currentTime &&
-            timeSlot.endTime >= this.currentTime
-          ) {
-            // last slot that needs back-filling
-            daySchedule.scheduleMeeting(
-              new NothingEvent(timeSlot.startTime, this.currentTime - timeSlot.startTime, daySchedule.day),
-            );
-            break;
-          }
-          daySchedule.scheduleMeeting(new NothingEvent(timeSlot.startTime, timeSlot.duration, daySchedule.day));
+          const timeSlotStartDayTime = (this.dayLengthInMinutes * daySchedule.day) + timeSlot.startTime;
+          const nothingDuration = Math.min(timeSlot.duration, this.currentDayTime - timeSlotStartDayTime);
+          daySchedule.scheduleMeeting(
+            new NothingEvent(timeSlot.startTime, nothingDuration, daySchedule.day),
+          );
         }
       }
     }
