@@ -84,17 +84,17 @@ class DaySchedule {
         }
 
         // add event to schedule items
-        this.items.splice(timeSlot.nextEventIndex, 0, event);
+        this.items.splice(timeSlot.nextEventIndex + eventsAdded, 0, event);
         eventsAdded += 1;
 
         // Add possible NothingEvent to schedule items, or AvailableTimeSlot to schedule's available time slots.
         const endTimeDiff = timeSlot.endTime - event.endTime;
         if (endTimeDiff > 0) {
-          const nextEventIndex = timeSlot.nextEventIndex + eventsAdded;
+          let nextEventIndex = timeSlot.nextEventIndex + eventsAdded;
           if (endTimeDiff <= 30 && !(event instanceof ContextSwitchEvent)) {
             // just enough time to do nothing
             const newNothingEvent = new NothingEvent(event.endTime, endTimeDiff, this.day);
-            if (timeSlot.nextEventIndex == null) {
+            if (timeSlot.nextEventIndex === null) {
               this.items.push(newNothingEvent);
             } else {
               this.items.splice(nextEventIndex, 0, newNothingEvent);
