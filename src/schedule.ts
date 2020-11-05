@@ -90,7 +90,7 @@ class DaySchedule {
         // Add possible NothingEvent to schedule items, or AvailableTimeSlot to schedule's available time slots.
         const endTimeDiff = timeSlot.endTime - event.endTime;
         if (endTimeDiff > 0) {
-          let nextEventIndex = timeSlot.nextEventIndex + eventsAdded;
+          let nextEventIndex: null | number = timeSlot.nextEventIndex + eventsAdded;
           if (endTimeDiff <= 30 && !(event instanceof ContextSwitchEvent)) {
             // just enough time to do nothing
             const newNothingEvent = new NothingEvent(event.endTime, endTimeDiff, this.day);
@@ -101,6 +101,9 @@ class DaySchedule {
             }
           } else {
             // still room to do something (or the next thing being scheduled will be the ticket work)
+            if (timeSlot.nextEventIndex === null) {
+              nextEventIndex = null;
+            }
             newAvailableTimeSlots.push(new AvailableTimeSlot(nextEventIndex, event.endTime, timeSlot.endTime));
           }
         }
@@ -112,6 +115,12 @@ class DaySchedule {
     }
     // Merge in newly defined AvailableTimeSlots if applicable.
     this.availableTimeSlots.splice(matchingTimeSlotIndex, 1, ...newAvailableTimeSlots);
+    for (let i = matchingTimeSlotIndex + 1; i < this.availableTimeSlots.length; i++) {
+      const timeSlot = this.availableTimeSlots[i];
+      if (timeSlot.nextEventIndex !== null) {
+        timeSlot.nextEventIndex += eventsAdded;
+      }
+    }
   }
 }
 
