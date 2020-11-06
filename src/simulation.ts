@@ -369,15 +369,7 @@ export class Simulation {
     return this.qaStack.length === 0 && this.needsAutomationStack.length === 0;
   }
   get allProgrammersAreDoneForTheSprint(): boolean {
-    for (let prog of this.programmers) {
-      if (prog.nextWorkIterationCompletionCheckIn !== -1) {
-        return false;
-      }
-      if (prog.nextAvailabilityCheckIn !== -1) {
-        return false;
-      }
-    }
-    return true;
+    return this.programmers.every(p => p.nextCheckInTime < 0);
   }
   getWorkerWithEarliestUpcomingCheckIn(): Tester | Programmer {
     // Skip ahead to the next relevant point in time. This will either be the
