@@ -78,7 +78,7 @@ class DaySchedule {
             eventsAdded += 1;
           } else {
             newAvailableTimeSlots.push(
-              new AvailableTimeSlot(timeSlot.nextEventIndex, timeSlot.startTime, event.startTime),
+              new AvailableTimeSlot(timeSlot.nextEventIndex === null ? 0 : timeSlot.nextEventIndex, timeSlot.startTime, event.startTime),
             );
           }
         }
@@ -90,21 +90,18 @@ class DaySchedule {
         // Add possible NothingEvent to schedule items, or AvailableTimeSlot to schedule's available time slots.
         const endTimeDiff = timeSlot.endTime - event.endTime;
         if (endTimeDiff > 0) {
-          let nextEventIndex: null | number = timeSlot.nextEventIndex + eventsAdded;
+          const nextEventIndex: null | number = timeSlot.nextEventIndex === null ? null : timeSlot.nextEventIndex + eventsAdded;
           if (endTimeDiff <= 30 && !(event instanceof ContextSwitchEvent)) {
             // just enough time to do nothing
             const newNothingEvent = new NothingEvent(event.endTime, endTimeDiff, this.day);
             if (timeSlot.nextEventIndex === null) {
               this.items.push(newNothingEvent);
             } else {
-              this.items.splice(nextEventIndex, 0, newNothingEvent);
+              this.items.splice(nextEventIndex!, 0, newNothingEvent);
             }
           } else {
             // still room to do something (or the next thing being scheduled will be the ticket work)
-            if (timeSlot.nextEventIndex === null) {
-              nextEventIndex = null;
-            }
-            newAvailableTimeSlots.push(new AvailableTimeSlot(nextEventIndex, event.endTime, timeSlot.endTime));
+            newAvailableTimeSlots.push(new AvailableTimeSlot(timeSlot.nextEventIndex === null ? null : nextEventIndex, event.endTime, timeSlot.endTime));
           }
         }
       }
