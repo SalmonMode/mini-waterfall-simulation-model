@@ -118,7 +118,7 @@ class DaySchedule {
               newTimeSlotNextEventIndex = timeSlot.nextEventIndex + eventsAdded;
             }
             newAvailableTimeSlots.push(
-              new AvailableTimeSlot(newTimeSlotNextEventIndex, timeSlot.startTime, event.startTime),
+              new AvailableTimeSlot(newTimeSlotNextEventIndex, event.endTime, timeSlot.endTime),
             );
           }
         }
