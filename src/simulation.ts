@@ -104,7 +104,7 @@ export class Simulation {
   }
   get projectedSprintCountUntilDeadlock(): number | null {
     if (this.secretProjectedSprintCountUntilDeadlock === undefined) {
-      throw Error("Simulation must simulate to establish a projected deadlock");
+      throw Error('Simulation must simulate to establish a projected deadlock');
     }
     return this.secretProjectedSprintCountUntilDeadlock;
   }
@@ -350,7 +350,12 @@ export class Simulation {
   }
   getNextCheckInTime(): number | null {
     let earliestWorker = this.getWorkerWithEarliestUpcomingCheckIn();
-    if (earliestWorker instanceof Tester && this.noWorkForTesters && earliestWorker.nextWorkIterationCompletionCheckIn === null && this.allProgrammersAreDoneForTheSprint) {
+    if (
+      earliestWorker instanceof Tester &&
+      this.noWorkForTesters &&
+      earliestWorker.nextWorkIterationCompletionCheckIn === null &&
+      this.allProgrammersAreDoneForTheSprint
+    ) {
       // The worker with the earliest check-in was found to be a tester, but there's no
       // available work for them, they have nothing to turn in, and all the programmers
       // are done for the rest of the sprint so no new work will become available. Since
@@ -369,7 +374,7 @@ export class Simulation {
     return this.qaStack.length === 0 && this.needsAutomationStack.length === 0;
   }
   get allProgrammersAreDoneForTheSprint(): boolean {
-    return this.programmers.every(p => p.nextCheckInTime < 0);
+    return this.programmers.every((p) => p.nextCheckInTime < 0);
   }
   getWorkerWithEarliestUpcomingCheckIn(): Tester | Programmer {
     // Skip ahead to the next relevant point in time. This will either be the
@@ -659,11 +664,9 @@ export class Simulation {
           if (daySchedule.day === this.currentDay && timeSlot.startTime >= this.currentTime) {
             break;
           }
-          const timeSlotStartDayTime = (this.dayLengthInMinutes * daySchedule.day) + timeSlot.startTime;
+          const timeSlotStartDayTime = this.dayLengthInMinutes * daySchedule.day + timeSlot.startTime;
           const nothingDuration = Math.min(timeSlot.duration, this.currentDayTime - timeSlotStartDayTime);
-          daySchedule.scheduleMeeting(
-            new NothingEvent(timeSlot.startTime, nothingDuration, daySchedule.day),
-          );
+          daySchedule.scheduleMeeting(new NothingEvent(timeSlot.startTime, nothingDuration, daySchedule.day));
         }
       }
     }
