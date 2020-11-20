@@ -146,7 +146,7 @@ export class Simulation {
       // process handing out new work after all available tickets have been
       // determined
       this.handOutNewProgrammerWork();
-      this.backfillTesterScheduleForTimeTheySpentDoingNothing();
+      this.backfillUntilDayTimeTesterScheduleForTimeTheySpentDoingNothing(this.currentDayTime);
       this.handOutNewTesterWork();
       nextCheckInTime = this.getNextCheckInTime()!;
       if (nextCheckInTime === this.currentDayTime) {
@@ -246,10 +246,10 @@ export class Simulation {
     let sprintsUntilDeadlock = 0;
     const estimatedMinimumCheckTimePerTicket = this.maxFullRunTesterWorkTimeInHours * 60 * 0.25;
     while (remainingCheckingMinutes > estimatedMinimumCheckTimePerTicket) {
-      let totalNewManualCheckTime = Math.round(
+      let totalNewManualCheckTime = Math.ceil(
         percentageOfCheckTimeSpentOnNewManualChecking * remainingCheckingMinutes,
       );
-      let totalNewFluffCheckTime = Math.round(percentageOfCheckTimeSpentOnFluffChecking * remainingCheckingMinutes);
+      let totalNewFluffCheckTime = Math.ceil(percentageOfCheckTimeSpentOnFluffChecking * remainingCheckingMinutes);
       let projectedRefinedNewRegressionCheckMinutes = (1 - this.checkRefinement) * totalNewManualCheckTime;
 
       remainingCheckingMinutes -= projectedRefinedNewRegressionCheckMinutes;
@@ -353,8 +353,8 @@ export class Simulation {
     if (
       earliestWorker instanceof Tester &&
       this.noWorkForTesters &&
-      earliestWorker.nextWorkIterationCompletionCheckIn === null &&
-      this.allProgrammersAreDoneForTheSprint
+      this.allProgrammersAreDoneForTheSprint &&
+      this.remainingTestersHaveCheckInNow
     ) {
       // The worker with the earliest check-in was found to be a tester, but there's no
       // available work for them, they have nothing to turn in, and all the programmers
@@ -362,6 +362,7 @@ export class Simulation {
       // in this case, only a tester that was just now becoming available would be the
       // earliest worker. But since there's no new work for any of the testers to do, it
       // must mean that the simulation can be finished.
+      this.backfillUntilDayTimeTesterScheduleForTimeTheySpentDoingNothing(this.totalSimulationMinutes);
       return -1;
     }
     if (earliestWorker.nextWorkIterationCompletionCheckIn! > this.currentDayTime) {
@@ -375,6 +376,9 @@ export class Simulation {
   }
   get allProgrammersAreDoneForTheSprint(): boolean {
     return this.programmers.every((p) => p.nextCheckInTime < 0);
+  }
+  get remainingTestersHaveCheckInNow(): boolean {
+    return this.testers.map(t => t.nextCheckInTime).filter(t => t > 0).every(t => t === this.currentDayTime);
   }
   getWorkerWithEarliestUpcomingCheckIn(): Tester | Programmer {
     // Skip ahead to the next relevant point in time. This will either be the
@@ -419,9 +423,9 @@ export class Simulation {
       if (eWorker.nextWorkIterationCompletionCheckIn! > this.currentDayTime) {
         // Worker has an upcoming work completion check-in. Work completion
         // check-ins must always come before, or be at the same time as availability
-        // check-ins. If the completion check-in is earlier, then it must be the
-        // one we want. If it's at the same time as the availability check-in, then
-        // it doesn't matter which we use, so the logic is simpler if we defer to
+        // check-ins (or be null). If the completion check-in is earlier, then it must
+        // be the one we want. If it's at the same time as the availability check-in,
+        // then it doesn't matter which we use, so the logic is simpler if we defer to
         // the completion check-in.
         eWorkerRelevantCheckIn = eWorker.nextWorkIterationCompletionCheckIn!;
       } else {
@@ -433,9 +437,9 @@ export class Simulation {
       if (nWorker.nextWorkIterationCompletionCheckIn! > this.currentDayTime) {
         // Worker has an upcoming work completion check-in. Work completion
         // check-ins must always come before, or be at the same time as availability
-        // check-ins. If the completion check-in is earlier, then it must be the
-        // one we want. If it's at the same time as the availability check-in, then
-        // it doesn't matter which we use, so the logic is simpler if we defer to
+        // check-ins (or be null). If the completion check-in is earlier, then it must
+        // be the one we want. If it's at the same time as the availability check-in,
+        // then it doesn't matter which we use, so the logic is simpler if we defer to
         // the completion check-in.
         nWorkerRelevantCheckIn = nWorker.nextWorkIterationCompletionCheckIn!;
       } else {
@@ -461,6 +465,7 @@ export class Simulation {
       } else {
         this.qaStack.push(possiblyFinishedTicket);
       }
+      p.nextWorkIterationCompletionCheckIn = null;
     }
   }
   processTesterCompletedWork() {
@@ -486,6 +491,7 @@ export class Simulation {
           this.needsAutomationStack.push(possiblyFinishedTicket);
           possiblyFinishedTicket.unfinished = false;
         }
+        t.nextWorkIterationCompletionCheckIn = null;
       }
     }
   }
@@ -504,7 +510,10 @@ export class Simulation {
     // planned work for the sprint, or work that was pulled into the sprint from the
     // backlog. Either way, a programmer should always have work available to do.
     for (let p of this.programmers) {
-      if (p.nextAvailabilityCheckIn !== this.currentDayTime || p.nextAvailabilityCheckIn < 0) {
+      if (p.nextAvailabilityCheckIn > 0 && p.nextAvailabilityCheckIn < this.currentDayTime) {
+        throw new Error('Programmer is being left behind');
+      }
+      else if (p.nextAvailabilityCheckIn !== this.currentDayTime) {
         continue;
       }
       // can start new work
@@ -519,6 +528,8 @@ export class Simulation {
           ) {
             ticket = this.passBackStack.splice(highestPriorityPassBackTicketIndex, 1)[0];
           } else {
+            // code review should be done if it takes higher priority or it's of
+            // equivalent priority (because it takes less time)
             ticket = this.codeReviewStack.splice(highestPriorityCodeReviewTicketIndex, 1)[0];
           }
         } else if (highestPriorityPassBackTicketIndex !== null) {
@@ -527,7 +538,7 @@ export class Simulation {
           ticket = this.codeReviewStack.splice(highestPriorityCodeReviewTicketIndex, 1)[0];
         }
       }
-      if (ticket === null) {
+      if (!ticket) {
         ticket = this.ticketFactory.generateTicket();
         p.addTicket(ticket);
         this.tickets.push(ticket);
@@ -551,7 +562,7 @@ export class Simulation {
       }
     }
   }
-  getHighestPriorityPassBackWorkIndexForProgrammer(programmer: Programmer): number {
+  getHighestPriorityPassBackWorkIndexForProgrammer(programmer: Programmer): number | null {
     let ownedTickets = programmer.tickets.map((ticket) => ticket.number);
     // needs to get highest priority ticket that belongs to them
     return this.passBackStack.reduce(
@@ -567,9 +578,9 @@ export class Simulation {
         return highestPriorityOwnedTicketIndex!;
       },
       null,
-    )!;
+    );
   }
-  getHighestPriorityCodeReviewWorkIndexForProgrammer(programmer: Programmer): number {
+  getHighestPriorityCodeReviewWorkIndexForProgrammer(programmer: Programmer): number | null {
     let ownedTickets = programmer.tickets.map((ticket) => ticket.number);
 
     // needs to get highest priority ticket that doesn't belongs to them
@@ -586,9 +597,9 @@ export class Simulation {
         return highestPriorityOwnedTicketIndex;
       },
       null,
-    )!;
+    );
   }
-  getHighestPriorityAutomationIndex(): number {
+  getHighestPriorityAutomationIndex(): number | null {
     return this.needsAutomationStack.reduce(
       (highestPriorityTicketIndex: number | null, currentTicket: Ticket, currentTicketIndex: number) => {
         if (!highestPriorityTicketIndex) {
@@ -600,7 +611,7 @@ export class Simulation {
         return highestPriorityTicketIndex!;
       },
       null,
-    )!;
+    );
   }
   handOutNewTesterWork() {
     for (let t of this.testers) {
@@ -610,72 +621,71 @@ export class Simulation {
       }
       if (t.nextAvailabilityCheckIn <= this.currentDayTime) {
         // can start new work
-        let ticket;
+        let ticket = null;
         if (this.qaStack.length > 0) {
-          let highestPriorityTicketIndex = this.getHighestPriorityTicketIndexForTester(t);
-          ticket = this.qaStack.splice(highestPriorityTicketIndex, 1)[0];
-          t.addTicket(ticket);
-          try {
-            const iterationComplete = t.schedule.addWork(ticket);
-            if (iterationComplete !== false) {
-              t.nextWorkIterationCompletionCheckIn = iterationComplete;
-            }
-          } catch (err) {
-            if (err instanceof RangeError) {
-              // ran out of time in the sprint
-              t.nextWorkIterationCompletionCheckIn = -1;
-              this.unfinishedStack.push(ticket);
-            } else {
-              throw err;
-            }
+          let highestPriorityTicketIndex = this.getHighestPriorityCheckingWorkIndexForTester(t);
+          if (highestPriorityTicketIndex) {
+            ticket = this.qaStack.splice(highestPriorityTicketIndex, 1)[0];
           }
-        } else if (this.needsAutomationStack.length > 0) {
+        }
+        if (!ticket && this.needsAutomationStack.length > 0) {
+          // automation takes a lower priority than checking by hand
           let highestPriorityTicketIndex = this.getHighestPriorityAutomationIndex();
-          ticket = this.needsAutomationStack.splice(highestPriorityTicketIndex, 1)[0];
-          t.addTicket(ticket);
-          try {
-            const iterationComplete = t.schedule.addWork(ticket);
-            if (iterationComplete !== false) {
-              t.nextWorkIterationCompletionCheckIn = iterationComplete;
-            }
-          } catch (err) {
-            if (err instanceof RangeError) {
-              // ran out of time in the sprint
-              t.nextWorkIterationCompletionCheckIn = -1;
-              continue;
-            } else {
-              throw err;
-            }
+          if (highestPriorityTicketIndex) {
+            ticket = this.needsAutomationStack.splice(highestPriorityTicketIndex, 1)[0];
+          }
+        }
+        if (!ticket) {
+          // tester can't do anything at the moment
+          continue;
+        }
+        t.addTicket(ticket);
+        try {
+          const iterationComplete = t.schedule.addWork(ticket);
+          if (iterationComplete !== false) {
+            t.nextWorkIterationCompletionCheckIn = iterationComplete;
+          }
+        } catch (err) {
+          if (err instanceof RangeError) {
+            // ran out of time in the sprint
+            t.nextWorkIterationCompletionCheckIn = -1;
+            this.unfinishedStack.push(ticket);
+          } else {
+            throw err;
           }
         }
       }
     }
   }
-  backfillTesterScheduleForTimeTheySpentDoingNothing() {
+  backfillUntilDayTimeTesterScheduleForTimeTheySpentDoingNothing(targetDayTime: number) {
     // necessary to avoid logic issues towards the end of the sprint where next
     // available time is determined.
+    const targetDay = Math.floor(targetDayTime / this.dayLengthInMinutes)
+    const targetTime = Math.floor(targetDayTime % this.dayLengthInMinutes)
     for (let t of this.testers) {
       for (let daySchedule of t.schedule.daySchedules) {
-        if (daySchedule.day > this.currentDay) {
+        if (daySchedule.day > targetDay) {
           break;
         }
         while (daySchedule.availableTimeSlots.length > 0) {
           const timeSlot = daySchedule.availableTimeSlots[0];
-          if (daySchedule.day === this.currentDay && timeSlot.startTime >= this.currentTime) {
+          if (daySchedule.day === targetDay && timeSlot.startTime >= targetTime) {
             break;
           }
           const timeSlotStartDayTime = this.dayLengthInMinutes * daySchedule.day + timeSlot.startTime;
-          const nothingDuration = Math.min(timeSlot.duration, this.currentDayTime - timeSlotStartDayTime);
+          const nothingDuration = Math.min(timeSlot.duration, targetDayTime - timeSlotStartDayTime);
           daySchedule.scheduleMeeting(new NothingEvent(timeSlot.startTime, nothingDuration, daySchedule.day));
         }
       }
     }
   }
-  getHighestPriorityTicketIndexForTester(tester: Tester): number {
+  getHighestPriorityCheckingWorkIndexForTester(tester: Tester): number | null {
     let ownedTickets = tester.tickets.map((ticket) => ticket.number);
     return this.qaStack.reduce(
       (highestPriorityTicketIndex: number | null, currentTicket: Ticket, currentTicketIndex: number) => {
-        if (ownedTickets.includes(currentTicket.number)) {
+        // if the ticket.firstIteration is true, then the ticket hasn't been claimed by
+        // a tester yet, so it's up for grabs.
+        if (ownedTickets.includes(currentTicket.number) || currentTicket.firstIteration) {
           if (!highestPriorityTicketIndex) {
             return currentTicketIndex;
           }
@@ -686,7 +696,7 @@ export class Simulation {
         return highestPriorityTicketIndex!;
       },
       null,
-    )!;
+    );
   }
   aggregateMinutesSpent() {
     // Example for getting time spent context switching at minute 321

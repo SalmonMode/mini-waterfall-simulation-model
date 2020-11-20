@@ -61,7 +61,7 @@ export class Ticket {
 export class TicketFactory {
   // start the number off higher than 0 to make it more interesting
   private startingTicketNumber: number = 100;
-  public maxCodeReviewTimeInHours: number;
+  public maxCodeReviewTimeInHours: number = 1;
   public ticketsMade: number;
   constructor(
     public maxInitialProgrammerWorkTimeInHours: number = 16,
@@ -86,7 +86,6 @@ export class TicketFactory {
     this.maxFullRunTesterWorkTimeInHours = maxFullRunTesterWorkTimeInHours;
     this.maxQaAutomationTime = maxQaAutomationTime;
     this.averagePassBackCount = averagePassBackCount;
-    this.maxCodeReviewTimeInHours = 0.5;
     this.ticketsMade = 0;
   }
   generateTicket() {
@@ -99,7 +98,7 @@ export class TicketFactory {
     const passBackCount = this.generateTicketPassBackCount();
     programmerWorkIterations.push(...this.sampleFixWorkIterationTime(initialProgrammerWorkTime, passBackCount));
     programmerCodeReviewWorkIterations.push(
-      ...this.sampleFixWorkIterationTime(fullRunCodeReviewWorkTime, passBackCount),
+      ...this.sampleFixCodeReviewWorkIterationTime(fullRunCodeReviewWorkTime, passBackCount),
       fullRunCodeReviewWorkTime,
     );
     testerWorkIterations.push(
@@ -148,7 +147,7 @@ export class TicketFactory {
     const minimumWorkTimeInMinutes = 30;
     const sample = PD.rgamma(sampleCount, 3, 0.1).map((maxWorkTimeValue: number) => {
       const maxWorkTimePercentage = Math.min(maxWorkTimeValue / 100.0, 1);
-      return new WorkIteration(Math.round(maxTimeInHours * maxWorkTimePercentage * 60) + minimumWorkTimeInMinutes);
+      return new WorkIteration(Math.min(Math.round(maxTimeInHours * maxWorkTimePercentage * 60) + minimumWorkTimeInMinutes, (maxTimeInHours * 60)));
     });
     return sample;
   }
@@ -175,12 +174,25 @@ export class TicketFactory {
     const sample = PD.rgamma(sampleCount, 1, 5).map((fixWorkTimeValue: number) => {
       const fixWorkTimePercentage = Math.min(fixWorkTimeValue / 100.0, 1);
       return new WorkIteration(
-        Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes,
+        Math.min(Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes, baseWorkIteration.time),
       );
     });
     return sample;
   }
-  generateCodeReviewWorkIterationTime(maxTimeInHours = 0.5) {
+  sampleFixCodeReviewWorkIterationTime(baseWorkIteration: WorkIteration, sampleCount: number) {
+    if (sampleCount <= 0) {
+      return [];
+    }
+    const minimumWorkTimeInMinutes = 5;
+    const sample = PD.rgamma(sampleCount, 1, 5).map((fixWorkTimeValue: number) => {
+      const fixWorkTimePercentage = Math.min(fixWorkTimeValue / 100.0, 1);
+      return new WorkIteration(
+        Math.min(Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes, baseWorkIteration.time),
+      );
+    });
+    return sample;
+  }
+  generateCodeReviewWorkIterationTime() {
     return this.sampleCodeReviewWorkIterationTime(1)[0];
   }
   sampleCodeReviewWorkIterationTime(sampleCount: number) {
@@ -189,9 +201,10 @@ export class TicketFactory {
     if (sampleCount <= 0) {
       return [];
     }
+    const minimumWorkTimeInMinutes = 5;
     const sample = PD.rgamma(sampleCount, 3, 0.1).map((maxWorkTimeValue: number) => {
       const maxWorkTimePercentage = Math.min(maxWorkTimeValue / 100.0, 1);
-      return new WorkIteration(Math.round(this.maxCodeReviewTimeInHours * maxWorkTimePercentage * 60));
+      return new WorkIteration(Math.min(Math.round(this.maxCodeReviewTimeInHours * maxWorkTimePercentage * 60) + minimumWorkTimeInMinutes, (this.maxCodeReviewTimeInHours * 60)));
     });
     return sample;
   }

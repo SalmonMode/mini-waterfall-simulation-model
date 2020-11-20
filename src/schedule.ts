@@ -79,7 +79,7 @@ class DaySchedule {
           } else {
             let newTimeSlotNextEventIndex: number;
             if (timeSlot.nextEventIndex === null) {
-              newTimeSlotNextEventIndex = 0;
+              newTimeSlotNextEventIndex = this.items.length;
             } else {
               newTimeSlotNextEventIndex = timeSlot.nextEventIndex;
             }
@@ -128,14 +128,16 @@ class DaySchedule {
       // event conflicts
       throw Error('Event conflicts with another event');
     }
-    // Merge in newly defined AvailableTimeSlots if applicable.
-    this.availableTimeSlots.splice(matchingTimeSlotIndex, 1, ...newAvailableTimeSlots);
+    // update remaining time slots so they're `nextEventIndex` properties are increased
+    // as necessary, based on the number of events added.
     for (let i = matchingTimeSlotIndex + 1; i < this.availableTimeSlots.length; i++) {
       const timeSlot = this.availableTimeSlots[i];
       if (timeSlot.nextEventIndex !== null) {
         timeSlot.nextEventIndex += eventsAdded;
       }
     }
+    // Merge in newly defined AvailableTimeSlots if applicable.
+    this.availableTimeSlots.splice(matchingTimeSlotIndex, 1, ...newAvailableTimeSlots);
   }
 }
 
@@ -203,9 +205,9 @@ export abstract class Schedule {
   }
 
   get earliestAvailableDayForWorkIndex(): number {
-    for (let daySchedule of this.daySchedules) {
-      if (daySchedule.availableTimeSlots.length > 0) {
-        return daySchedule.day;
+    for (let i in this.daySchedules) {
+      if (this.daySchedules[i].availableTimeSlots.length > 0) {
+        return parseInt(i);
       }
     }
     return -1;
@@ -234,6 +236,9 @@ export abstract class Schedule {
     let firstIteration = ticket.firstIteration;
     let finalIteration = !queue.length;
     let lastWorkEvent;
+    if (workIteration.time === 0) {
+      throw new Error('Got work iteration with no time');
+    }
     while (workIteration.time > 0) {
       // work has a potential of being completed on the currently considered day,
       // but if it isn't, this.earliestAvailableDayForWorkIndex will be updated to
