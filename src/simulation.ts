@@ -374,12 +374,14 @@ export class Simulation {
     }
   }
   get noAvailableWorkForTesters(): boolean {
-    const availableTesters = this.testers.filter((t) => t.nextCheckInTime >= 0);
-    const claimableTicketNumbers = availableTesters
+    // check for any tickets in either the qaStack or the needsAutomationStack that can
+    // be claimed by any tester that is still available this sprint.
+    const unavailableTesters = this.testers.filter((t) => t.nextCheckInTime < 0);
+    const unclaimableTicketNumbers = unavailableTesters
       .reduce((acc: Ticket[], t) => acc.concat(t.tickets), [])
       .map((ticket) => ticket.ticketNumber);
     const availableTicketNumbers = [...this.qaStack, ...this.needsAutomationStack].map((ticket) => ticket.ticketNumber);
-    return claimableTicketNumbers.filter((num) => availableTicketNumbers.includes(num)).length > 0;
+    return availableTicketNumbers.filter((num) => !unclaimableTicketNumbers.includes(num)).length > 0;
   }
   get allProgrammersAreDoneForTheSprint(): boolean {
     return this.programmers.every((p) => p.nextCheckInTime < 0);
