@@ -1,5 +1,5 @@
-export * from './CustomEventsByDayList';
-export * from './events';
+export * from './customEventsByDayList';
+export * from './event';
 export * from './schedule';
 export * from './simulation';
 export * from './stackLogEntry';

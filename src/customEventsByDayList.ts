@@ -1,4 +1,4 @@
-import { ScheduledEvent } from './events';
+import { ScheduledEvent } from './event';
 
 
 export type CustomEventsByDayList = ScheduledEvent[][];

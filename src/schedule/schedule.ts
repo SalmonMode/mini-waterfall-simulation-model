@@ -1,145 +1,8 @@
-import { CustomEventsByDayList } from './CustomEventsByDayList';
-import {
-  ContextSwitchEvent,
-  DailyStandup,
-  LunchBreak,
-  NothingEvent,
-  RegressionTesting,
-  ScheduledCorePreviouslyInterruptedTicketAutomationWork,
-  ScheduledCorePreviouslyInterruptedTicketCheckingWork,
-  ScheduledCorePreviouslyInterruptedTicketCodeReviewWork,
-  ScheduledCorePreviouslyInterruptedTicketProgrammingWork,
-  ScheduledCoreTicketAutomationWork,
-  ScheduledCoreTicketCheckingWork,
-  ScheduledCoreTicketCodeReviewWork,
-  ScheduledCoreTicketProgrammingWork,
-  ScheduledEvent,
-  ScheduledRedundantNewTicketCheckingWork,
-  ScheduledRedundantNewTicketCodeReviewWork,
-  ScheduledRedundantNewTicketProgrammingWork,
-  ScheduledRedundantPreviouslyInterruptedTicketCheckingWork,
-  ScheduledRedundantPreviouslyInterruptedTicketCodeReviewWork,
-  ScheduledRedundantPreviouslyInterruptedTicketProgrammingWork,
-  SprintPlanning,
-  SprintRetro,
-} from './events';
-import { Ticket } from './ticket';
-import { WorkIteration } from './workIteration';
-
-class AvailableTimeSlot {
-  duration: number;
-  constructor(public nextEventIndex: number | null, public startTime: number, public endTime: number) {
-    this.duration = endTime - startTime;
-  }
-  get previousMeetingIndex(): number | null {
-    if (this.nextEventIndex === null || this.nextEventIndex === 0) {
-      return null;
-    }
-    return this.nextEventIndex - 1;
-  }
-}
-
-class DaySchedule {
-  items: ScheduledEvent[] = [];
-  lastMeetingIndexBeforeAvailability: number | null = null;
-  availableTimeSlots: AvailableTimeSlot[] = [new AvailableTimeSlot(null, 0, 480)];
-  constructor(lunchTime: number, public day: number) {
-    let lunch = new LunchBreak(lunchTime, 60, this.day);
-    this.scheduleMeeting(lunch);
-  }
-
-  scheduleMeeting(event: ScheduledEvent) {
-    // assumes events are set first and were set in order
-    if (this.availableTimeSlots.length === 0) {
-      throw Error('No available time to schedule events');
-    }
-    const newAvailableTimeSlots = [];
-    // track the number of events added so that NothingEvents can also impact the
-    // later AvailableTimeSlot's nextEventIndex attribute.
-    let eventsAdded = 0;
-    let matchingTimeSlotIndex = 0;
-    for (let timeSlotIndex = 0; timeSlotIndex < this.availableTimeSlots.length; timeSlotIndex++) {
-      const timeSlot = this.availableTimeSlots[timeSlotIndex];
-      if (!eventsAdded && event.startTime >= timeSlot.startTime && event.endTime <= timeSlot.endTime) {
-        // event fits here
-        matchingTimeSlotIndex = timeSlotIndex;
-
-        // Add possible NothingEvent to schedule items, or AvailableTimeSlot to schedule's available time slots.
-        const startTimeDiff = event.startTime - timeSlot.startTime;
-        if (startTimeDiff > 0) {
-          if (startTimeDiff <= 30) {
-            // just enough time to do nothing
-            const newNothingEvent = new NothingEvent(timeSlot.startTime, startTimeDiff, this.day);
-            if (timeSlot.nextEventIndex === null) {
-              this.items.push(newNothingEvent);
-            } else {
-              this.items.splice(timeSlot.nextEventIndex, 0, newNothingEvent);
-            }
-            eventsAdded += 1;
-          } else {
-            let newTimeSlotNextEventIndex: number;
-            if (timeSlot.nextEventIndex === null) {
-              newTimeSlotNextEventIndex = this.items.length;
-            } else {
-              newTimeSlotNextEventIndex = timeSlot.nextEventIndex;
-            }
-            newAvailableTimeSlots.push(
-              new AvailableTimeSlot(newTimeSlotNextEventIndex, timeSlot.startTime, event.startTime),
-            );
-          }
-        }
-
-        // add event to schedule items
-        if (timeSlot.nextEventIndex === null) {
-          this.items.push(event);
-        } else {
-          this.items.splice(timeSlot.nextEventIndex + eventsAdded, 0, event);
-        }
-        eventsAdded += 1;
-
-        // Add possible NothingEvent to schedule items, or AvailableTimeSlot to schedule's available time slots.
-        const endTimeDiff = timeSlot.endTime - event.endTime;
-        if (endTimeDiff > 0) {
-          if (endTimeDiff <= 30 && !(event instanceof ContextSwitchEvent)) {
-            // just enough time to do nothing
-            const newNothingEvent = new NothingEvent(event.endTime, endTimeDiff, this.day);
-            if (timeSlot.nextEventIndex === null) {
-              this.items.push(newNothingEvent);
-            } else {
-              this.items.splice(timeSlot.nextEventIndex + eventsAdded, 0, newNothingEvent);
-            }
-            eventsAdded += 1;
-          } else {
-            // still room to do something (or the next thing being scheduled will be the ticket work)
-            let newTimeSlotNextEventIndex: null | number;
-            if (timeSlot.nextEventIndex === null) {
-              newTimeSlotNextEventIndex = null;
-            } else {
-              newTimeSlotNextEventIndex = timeSlot.nextEventIndex + eventsAdded;
-            }
-            newAvailableTimeSlots.push(
-              new AvailableTimeSlot(newTimeSlotNextEventIndex, event.endTime, timeSlot.endTime),
-            );
-          }
-        }
-      }
-    }
-    if (!eventsAdded) {
-      // event conflicts
-      throw Error('Event conflicts with another event');
-    }
-    // update remaining time slots so they're `nextEventIndex` properties are increased
-    // as necessary, based on the number of events added.
-    for (let i = matchingTimeSlotIndex + 1; i < this.availableTimeSlots.length; i++) {
-      const timeSlot = this.availableTimeSlots[i];
-      if (timeSlot.nextEventIndex !== null) {
-        timeSlot.nextEventIndex += eventsAdded;
-      }
-    }
-    // Merge in newly defined AvailableTimeSlots if applicable.
-    this.availableTimeSlots.splice(matchingTimeSlotIndex, 1, ...newAvailableTimeSlots);
-  }
-}
+import { Ticket } from "../ticket";
+import { WorkIteration } from "../workIteration";
+import { CustomEventsByDayList } from "../customEventsByDayList";
+import { SprintPlanning, DailyStandup, SprintRetro, ContextSwitchEvent, ScheduledCorePreviouslyInterruptedTicketCodeReviewWork, ScheduledCoreTicketCodeReviewWork, ScheduledRedundantPreviouslyInterruptedTicketCodeReviewWork, ScheduledRedundantNewTicketCodeReviewWork, ScheduledCorePreviouslyInterruptedTicketAutomationWork, ScheduledCoreTicketAutomationWork } from "../event";
+import { DaySchedule, QaSchedule, ProgrammerSchedule } from "./";
 
 export abstract class Schedule {
   daySchedules: DaySchedule[] = [];
@@ -171,7 +34,7 @@ export abstract class Schedule {
     }
     for (let i = 0; i < this.sprintDayCount + this.regressionTestDayCount; i++) {
       const customEvents = this.customEventsByDay[i];
-      let schedule = new DaySchedule(lunchTime, i);
+      const schedule = new DaySchedule(lunchTime, i);
       for (const event of customEvents) {
         schedule.scheduleMeeting(event);
       }
@@ -205,9 +68,9 @@ export abstract class Schedule {
   }
 
   get earliestAvailableDayForWorkIndex(): number {
-    for (let i in this.daySchedules) {
+    for (let i = 0; i < this.daySchedules.length; i++) {
       if (this.daySchedules[i].availableTimeSlots.length > 0) {
-        return parseInt(i);
+        return i;
       }
     }
     return -1;
@@ -226,15 +89,15 @@ export abstract class Schedule {
     // assumes the meetings have already been defined and that work is being added
     // in the earliest available, viable time slot.
     this.lastTicketWorkedOn = ticket;
-    let queue = this.getWorkIterationQueueFromTicket(ticket);
-    let workIteration = queue.shift();
+    const queue = this.getWorkIterationQueueFromTicket(ticket);
+    const workIteration = queue.shift();
     if (!workIteration) {
       throw new Error('No work iterations available');
     }
-    let needsCodeReview = !!ticket.needsCodeReview;
-    let needsAutomation = !!ticket.needsAutomation;
-    let firstIteration = ticket.firstIteration;
-    let finalIteration = !queue.length;
+    const needsCodeReview = !!ticket.needsCodeReview;
+    const needsAutomation = !!ticket.needsAutomation;
+    const firstIteration = ticket.firstIteration;
+    const finalIteration = !queue.length;
     let lastWorkEvent;
     if (workIteration.time === 0) {
       throw new Error('Got work iteration with no time');
@@ -251,9 +114,9 @@ export abstract class Schedule {
       if (this.earliestAvailableDayForWorkIndex === -1) {
         throw RangeError('Not enough time left in the sprint to finish this ticket');
       }
-      let schedule = this.earliestAvailableDayScheduleForWork!;
-      let contextSwitchTime = Math.round(Math.random() * (30 - 10) + 10);
-      let contextSwitchEvent = new ContextSwitchEvent(
+      const schedule = this.earliestAvailableDayScheduleForWork!;
+      const contextSwitchTime = Math.round(Math.random() * (30 - 10) + 10);
+      const contextSwitchEvent = new ContextSwitchEvent(
         schedule.availableTimeSlots[0].startTime,
         contextSwitchTime,
         ticket,
@@ -387,55 +250,5 @@ export abstract class Schedule {
       return lastWorkEvent.day * 480 + lastWorkEvent.endTime;
     }
     return false;
-  }
-}
-
-export class ProgrammerSchedule extends Schedule {
-  scheduledCoreTicketWork = ScheduledCoreTicketProgrammingWork;
-  scheduledRedundantNewTicketWork = ScheduledRedundantNewTicketProgrammingWork;
-  scheduledCorePreviouslyInterruptedTicketWork = ScheduledCorePreviouslyInterruptedTicketProgrammingWork;
-  scheduledRedundantPreviouslyInterruptedTicketWork = ScheduledRedundantPreviouslyInterruptedTicketProgrammingWork;
-  getWorkIterationQueueFromTicket(ticket: Ticket) {
-    if (ticket.needsCodeReview) {
-      return ticket.programmerCodeReviewWorkIterations;
-    }
-    return ticket.programmerWorkIterations;
-  }
-}
-
-export class QaSchedule extends Schedule {
-  scheduledCoreTicketWork = ScheduledCoreTicketCheckingWork;
-  scheduledRedundantNewTicketWork = ScheduledRedundantNewTicketCheckingWork;
-  scheduledCorePreviouslyInterruptedTicketWork = ScheduledCorePreviouslyInterruptedTicketCheckingWork;
-  scheduledRedundantPreviouslyInterruptedTicketWork = ScheduledRedundantPreviouslyInterruptedTicketCheckingWork;
-  constructor(
-    public sprintDayCount: number,
-    public regressionTestDayCount: number,
-    lunchTime: number,
-    public customEventsByDay?: CustomEventsByDayList,
-  ) {
-    super(sprintDayCount, regressionTestDayCount, lunchTime, customEventsByDay);
-    for (let i = 0; i < regressionTestDayCount; i++) {
-      let previousSprintDaySchedule = this.daySchedules[i];
-      let currentSprintI = this.daySchedules.length - (regressionTestDayCount - i);
-      let currentSprintDaySchedule = this.daySchedules[currentSprintI];
-      // regression tests from previous sprint
-      while (previousSprintDaySchedule.availableTimeSlots.length > 0) {
-        const timeSlot = previousSprintDaySchedule.availableTimeSlots[0];
-        previousSprintDaySchedule.scheduleMeeting(new RegressionTesting(timeSlot.startTime, timeSlot.duration, i));
-      }
-      while (currentSprintDaySchedule.availableTimeSlots.length > 0) {
-        const timeSlot = currentSprintDaySchedule.availableTimeSlots[0];
-        currentSprintDaySchedule.scheduleMeeting(
-          new RegressionTesting(timeSlot.startTime, timeSlot.duration, i + this.sprintDayCount),
-        );
-      }
-    }
-  }
-  getWorkIterationQueueFromTicket(ticket: Ticket) {
-    if (ticket.needsAutomation) {
-      return ticket.automationWorkIterations;
-    }
-    return ticket.testerWorkIterations;
   }
 }

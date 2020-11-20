@@ -1,42 +1,5 @@
-import { CustomEventsByDayList } from './CustomEventsByDayList';
-import { ScheduledTicketWork } from './events';
-import { ProgrammerSchedule, QaSchedule } from './schedule';
-import { Ticket } from './ticket';
-
-interface WorkerMinutes {
-  contextSwitchingMinutes: number[];
-  meetingMinutes: number[];
-  productiveTicketWorkMinutes: number[];
-  redundantTicketWorkMinutes: number[];
-  programmingMinutes: number[];
-  fluffProgrammingMinutes: number[];
-  nonFluffProgrammingMinutes: number[];
-  productiveProgrammingTicketWorkMinutes: number[];
-  redundantProgrammingTicketWorkMinutes: number[];
-  codeReviewMinutes: number[];
-  fluffCodeReviewMinutes: number[];
-  nonFluffCodeReviewMinutes: number[];
-  productiveCodeReviewTicketWorkMinutes: number[];
-  redundantCodeReviewTicketWorkMinutes: number[];
-  // TODO: This array tracks minutes that were spent recovering from an interruption,
-  // other than Lunch, and an end of day that was reached without going through a
-  // meeting. So if the day ended with SprintRetro, and the worker was in the
-  // middle of a work iteration, the ContextSwitchEvent before they began work on
-  // that work iteration would count towards this, as would a meeting in the
-  // middle of the day. This may not be immediately relevant, but may come in
-  // handy if other meetings are implemented.
-  productivityRecoveryMinutes: number[];
-  checkingMinutes: number[];
-  fluffCheckingMinutes: number[];
-  nonFluffCheckingMinutes: number[];
-  productiveCheckingTicketWorkMinutes: number[];
-  redundantCheckingTicketWorkMinutes: number[];
-  regressionTestingMinutes: number[];
-  automationMinutes: number[];
-  // Time spent doing nothing because there was no time to get started on anything
-  // before a meeting, lunch, or the end of the day came up.
-  nothingMinutes: number[];
-}
+import { Ticket, QaSchedule, ProgrammerSchedule, CustomEventsByDayList, ScheduledTicketWork } from "..";
+import { WorkerMinutes } from "./workerMinutes";
 
 export abstract class Worker implements WorkerMinutes {
   tickets: Ticket[] = [];
@@ -109,34 +72,34 @@ export abstract class Worker implements WorkerMinutes {
     // Called at the end of the simulation, as the events will all be added and this
     // can most efficiently iterate over them to determine the minutes and load them
     // into the minute arrays.
-    for (let day of this.schedule.daySchedules) {
-      for (let event of day.items) {
+    for (const day of this.schedule.daySchedules) {
+      for (const event of day.items) {
         // generates range of numbers representing the duration of the event for
         // the time range it took place. A 1 is added in the mapping to reflect
         // how the information would be queried for. A meeting can start at
         // dayTime 0, but if that dayTime is queried for, the response should be
         // 0 minutes. The index of the timestamp plus 1 represents the number of
         // minutes of the cumulative duration of events of that type.
-        let eventMinutes = Array.from(Array(event.duration).keys()).map((i) => i + event.rawStartDayTime + 1);
-        for (let category of event.relevantMinutes) {
+        const eventMinutes = Array.from(Array(event.duration).keys()).map((i) => i + event.rawStartDayTime + 1);
+        for (const category of event.relevantMinutes) {
           this[category as keyof WorkerMinutes]!.push(...eventMinutes);
         }
         if (event.relevantMinutes.includes('programmingMinutes')) {
-          if ((<ScheduledTicketWork>event).ticket.unfinished) {
+          if ((event as ScheduledTicketWork).ticket.unfinished) {
             this.fluffProgrammingMinutes.push(...eventMinutes);
           } else {
             this.nonFluffProgrammingMinutes.push(...eventMinutes);
           }
         }
         if (event.relevantMinutes.includes('codeReviewMinutes')) {
-          if ((<ScheduledTicketWork>event).ticket.unfinished) {
+          if ((event as ScheduledTicketWork).ticket.unfinished) {
             this.fluffCodeReviewMinutes.push(...eventMinutes);
           } else {
             this.nonFluffCodeReviewMinutes.push(...eventMinutes);
           }
         }
         if (event.relevantMinutes.includes('checkingMinutes')) {
-          if ((<ScheduledTicketWork>event).ticket.unfinished) {
+          if ((event as ScheduledTicketWork).ticket.unfinished) {
             this.fluffCheckingMinutes.push(...eventMinutes);
           } else {
             this.nonFluffCheckingMinutes.push(...eventMinutes);
@@ -231,7 +194,7 @@ export abstract class Worker implements WorkerMinutes {
 
     let ceilingIndex = Math.min(dayTime, minutesArr.length) - 1;
     // ceilingValue represents the dayTime at that index
-    let ceilingValue = minutesArr[ceilingIndex];
+    const ceilingValue = minutesArr[ceilingIndex];
     if (ceilingValue <= dayTime) {
       // rule out the initial ceiling value to make the while loop more efficient.
       // If it's ruled out here, the loop can assume that at some point, the
@@ -240,7 +203,7 @@ export abstract class Worker implements WorkerMinutes {
     }
 
     let floorIndex = 0;
-    let floorValue = minutesArr[floorIndex];
+    const floorValue = minutesArr[floorIndex];
     if (floorValue > dayTime) {
       // Requested dayTime must have been before any times were stored
       return 0;
@@ -249,8 +212,8 @@ export abstract class Worker implements WorkerMinutes {
       return 1;
     }
     while (true) {
-      let currentIndex = Math.round((floorIndex + ceilingIndex) / 2);
-      let foundTime = minutesArr[currentIndex];
+      const currentIndex = Math.round((floorIndex + ceilingIndex) / 2);
+      const foundTime = minutesArr[currentIndex];
       if (foundTime === dayTime) {
         return currentIndex + 1;
       }
@@ -286,8 +249,8 @@ export abstract class Worker implements WorkerMinutes {
     // The next time this worker should be checked in on, either because they would
     // have just finished working on an iteration of a ticket, or they would have
     // time available to work then.
-    let iterationCompleteCheckIn = this.nextWorkIterationCompletionCheckIn;
-    let availabilityCheckIn = this.nextAvailabilityCheckIn;
+    const iterationCompleteCheckIn = this.nextWorkIterationCompletionCheckIn;
+    const availabilityCheckIn = this.nextAvailabilityCheckIn;
     if (iterationCompleteCheckIn === null) {
       // work hasn't been added yet, so there isn't a need to check for completed
       // work, and this can defer to the availability
@@ -308,33 +271,11 @@ export abstract class Worker implements WorkerMinutes {
     //
     // If needed, the day can be found again by dividing by 480 and then rounding
     // down.
-    let earliestDayIndex = this.schedule.earliestAvailableDayForWorkIndex;
+    const earliestDayIndex = this.schedule.earliestAvailableDayForWorkIndex;
     if (earliestDayIndex < 0) {
       return -1;
     }
-    let earliestTime = this.schedule.daySchedules[earliestDayIndex].availableTimeSlots[0].startTime;
+    const earliestTime = this.schedule.daySchedules[earliestDayIndex].availableTimeSlots[0].startTime;
     return earliestTime + earliestDayIndex * 480;
-  }
-}
-
-export class Programmer extends Worker {
-  initializeSchedule() {
-    this.schedule = new ProgrammerSchedule(
-      this.sprintDayCount,
-      this.regressionTestDayCount,
-      this.lunchTime,
-      this.customEventsByDay,
-    );
-  }
-}
-
-export class Tester extends Worker {
-  initializeSchedule() {
-    this.schedule = new QaSchedule(
-      this.sprintDayCount,
-      this.regressionTestDayCount,
-      this.lunchTime,
-      this.customEventsByDay,
-    );
   }
 }

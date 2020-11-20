@@ -1,7 +1,8 @@
-import { CustomEventsByDayList } from './CustomEventsByDayList';
-import { NothingEvent } from './events';
+import { CustomEventsByDayList } from './customEventsByDayList';
+import { NothingEvent } from './event';
 import { StackLogEntry } from './stackLogEntry';
-import { Ticket, TicketFactory } from './ticket';
+import { Ticket } from './ticket';
+import { TicketFactory } from './ticketFactory';
 import { Programmer, Tester } from './worker';
 
 interface WorkerMinuteSnapshot {
@@ -112,7 +113,7 @@ export class Simulation {
     const customEventsByDay = this.customEventsByDay!.slice();
     this.programmers = [];
     for (let i = 0; i < this.programmerCount; i++) {
-      let prog = new Programmer(
+      const prog = new Programmer(
         `${Programmer.name} #${i + 1}`,
         this.sprintDayCount,
         this.regressionTestDayCount,
@@ -123,7 +124,7 @@ export class Simulation {
     }
     this.testers = [];
     for (let i = this.programmerCount; i < this.testerCount + this.programmerCount; i++) {
-      let t = new Tester(
+      const t = new Tester(
         `${Tester.name} #${i + 1 - this.programmerCount}`,
         this.sprintDayCount,
         this.regressionTestDayCount,
@@ -236,7 +237,8 @@ export class Simulation {
     const newManualCheckTime = totalSuccessfulCheckTime - newManualCheckTimeEliminatedByAutomation;
     if (newManualCheckTime <= 0 && fluffCheckingMinutes <= 0) {
       // configuration is theoretically sustainable, as it means all tickets that were
-      //planned for a sprint were both completed and had the checking of them automated.
+      // planned for a sprint were both completed and had the checking of them
+      // automated.
       this.secretProjectedSprintCountUntilDeadlock = null;
       return;
     }
@@ -246,11 +248,11 @@ export class Simulation {
     let sprintsUntilDeadlock = 0;
     const estimatedMinimumCheckTimePerTicket = this.maxFullRunTesterWorkTimeInHours * 60 * 0.25;
     while (remainingCheckingMinutes > estimatedMinimumCheckTimePerTicket) {
-      let totalNewManualCheckTime = Math.ceil(
+      const totalNewManualCheckTime = Math.ceil(
         percentageOfCheckTimeSpentOnNewManualChecking * remainingCheckingMinutes,
       );
-      let totalNewFluffCheckTime = Math.ceil(percentageOfCheckTimeSpentOnFluffChecking * remainingCheckingMinutes);
-      let projectedRefinedNewRegressionCheckMinutes = (1 - this.checkRefinement) * totalNewManualCheckTime;
+      const totalNewFluffCheckTime = Math.ceil(percentageOfCheckTimeSpentOnFluffChecking * remainingCheckingMinutes);
+      const projectedRefinedNewRegressionCheckMinutes = (1 - this.checkRefinement) * totalNewManualCheckTime;
 
       remainingCheckingMinutes -= projectedRefinedNewRegressionCheckMinutes;
       remainingCheckingMinutes -= totalNewFluffCheckTime;
@@ -265,17 +267,17 @@ export class Simulation {
   generateStackLogEntriesForDayTimeRange(dayTimeRangeStart: number, dayTimeRangeEnd: number) {
     // take the stacks at the moment of this function being called, and create a
     // series of stack log entries for each minute in the given dayTime range
-    let activeDevelopment = this.getTicketsCurrentlyInActiveDevelopment();
-    let waitingForCodeReview = this.codeReviewStack.slice();
-    let inCodeReview = this.getTicketsCurrentlyInCodeReview();
-    let waitingForQa = this.qaStack.slice();
-    let waitingForAutomation = this.needsAutomationStack.slice();
-    let automated = this.automatedStack.slice();
-    let inQa = this.getTicketsCurrentlyInQa();
-    let beingAutomated = this.getTicketsCurrentlyBeingAutomated();
-    let sentBack = this.passBackStack.slice();
-    let done = this.doneStack.slice();
-    let logEntry = new StackLogEntry(
+    const activeDevelopment = this.getTicketsCurrentlyInActiveDevelopment();
+    const waitingForCodeReview = this.codeReviewStack.slice();
+    const inCodeReview = this.getTicketsCurrentlyInCodeReview();
+    const waitingForQa = this.qaStack.slice();
+    const waitingForAutomation = this.needsAutomationStack.slice();
+    const automated = this.automatedStack.slice();
+    const inQa = this.getTicketsCurrentlyInQa();
+    const beingAutomated = this.getTicketsCurrentlyBeingAutomated();
+    const sentBack = this.passBackStack.slice();
+    const done = this.doneStack.slice();
+    const logEntry = new StackLogEntry(
       dayTimeRangeStart,
       dayTimeRangeEnd,
       activeDevelopment,
@@ -349,7 +351,7 @@ export class Simulation {
     ];
   }
   getNextCheckInTime(): number | null {
-    let earliestWorker = this.getWorkerWithEarliestUpcomingCheckIn();
+    const earliestWorker = this.getWorkerWithEarliestUpcomingCheckIn();
     if (
       earliestWorker instanceof Tester &&
       this.noWorkForTesters &&
@@ -451,11 +453,11 @@ export class Simulation {
     });
   }
   processProgrammerCompletedWork() {
-    for (let p of this.programmers) {
+    for (const p of this.programmers) {
       if (p.nextWorkIterationCompletionCheckIn! !== this.currentDayTime) {
         continue;
       }
-      let possiblyFinishedTicket = p.schedule.lastTicketWorkedOn;
+      const possiblyFinishedTicket = p.schedule.lastTicketWorkedOn;
       if (possiblyFinishedTicket === null) {
         throw Error('Worker had no last worked on ticket');
       }
@@ -469,9 +471,9 @@ export class Simulation {
     }
   }
   processTesterCompletedWork() {
-    for (let t of this.testers) {
+    for (const t of this.testers) {
       if (t.nextWorkIterationCompletionCheckIn === this.currentDayTime) {
-        let possiblyFinishedTicket = t.schedule.lastTicketWorkedOn;
+        const possiblyFinishedTicket = t.schedule.lastTicketWorkedOn;
         if (possiblyFinishedTicket === null) {
           throw Error('Worker had no last worked on ticket');
         }
@@ -509,7 +511,7 @@ export class Simulation {
     // new one to assign to them. This can be considered to be either already
     // planned work for the sprint, or work that was pulled into the sprint from the
     // backlog. Either way, a programmer should always have work available to do.
-    for (let p of this.programmers) {
+    for (const p of this.programmers) {
       if (p.nextAvailabilityCheckIn > 0 && p.nextAvailabilityCheckIn < this.currentDayTime) {
         throw new Error('Programmer is being left behind');
       }
@@ -519,8 +521,8 @@ export class Simulation {
       // can start new work
       let ticket = null;
       if (this.passBackStack.length > 0 || this.codeReviewStack.length > 0) {
-        let highestPriorityPassBackTicketIndex = this.getHighestPriorityPassBackWorkIndexForProgrammer(p);
-        let highestPriorityCodeReviewTicketIndex = this.getHighestPriorityCodeReviewWorkIndexForProgrammer(p);
+        const highestPriorityPassBackTicketIndex = this.getHighestPriorityPassBackWorkIndexForProgrammer(p);
+        const highestPriorityCodeReviewTicketIndex = this.getHighestPriorityCodeReviewWorkIndexForProgrammer(p);
         if (highestPriorityPassBackTicketIndex !== null && highestPriorityCodeReviewTicketIndex !== null) {
           if (
             this.passBackStack[highestPriorityPassBackTicketIndex].priority <
@@ -563,11 +565,11 @@ export class Simulation {
     }
   }
   getHighestPriorityPassBackWorkIndexForProgrammer(programmer: Programmer): number | null {
-    let ownedTickets = programmer.tickets.map((ticket) => ticket.number);
+    const ownedTickets = programmer.tickets.map((ticket) => ticket.ticketNumber);
     // needs to get highest priority ticket that belongs to them
     return this.passBackStack.reduce(
       (highestPriorityOwnedTicketIndex: number | null, currentTicket: Ticket, currentTicketIndex: number) => {
-        if (ownedTickets.includes(currentTicket.number)) {
+        if (ownedTickets.includes(currentTicket.ticketNumber)) {
           if (!highestPriorityOwnedTicketIndex) {
             return currentTicketIndex;
           }
@@ -581,12 +583,12 @@ export class Simulation {
     );
   }
   getHighestPriorityCodeReviewWorkIndexForProgrammer(programmer: Programmer): number | null {
-    let ownedTickets = programmer.tickets.map((ticket) => ticket.number);
+    const ownedTickets = programmer.tickets.map((ticket) => ticket.ticketNumber);
 
     // needs to get highest priority ticket that doesn't belongs to them
     return this.codeReviewStack.reduce(
       (highestPriorityOwnedTicketIndex: number | null, currentTicket: Ticket, currentTicketIndex: number) => {
-        if (!ownedTickets.includes(currentTicket.number)) {
+        if (!ownedTickets.includes(currentTicket.ticketNumber)) {
           if (!highestPriorityOwnedTicketIndex) {
             return currentTicketIndex;
           }
@@ -614,7 +616,7 @@ export class Simulation {
     );
   }
   handOutNewTesterWork() {
-    for (let t of this.testers) {
+    for (const t of this.testers) {
       if (t.nextAvailabilityCheckIn < 0) {
         // can't accept new work
         continue;
@@ -623,14 +625,14 @@ export class Simulation {
         // can start new work
         let ticket = null;
         if (this.qaStack.length > 0) {
-          let highestPriorityTicketIndex = this.getHighestPriorityCheckingWorkIndexForTester(t);
+          const highestPriorityTicketIndex = this.getHighestPriorityCheckingWorkIndexForTester(t);
           if (highestPriorityTicketIndex) {
             ticket = this.qaStack.splice(highestPriorityTicketIndex, 1)[0];
           }
         }
         if (!ticket && this.needsAutomationStack.length > 0) {
           // automation takes a lower priority than checking by hand
-          let highestPriorityTicketIndex = this.getHighestPriorityAutomationIndex();
+          const highestPriorityTicketIndex = this.getHighestPriorityAutomationIndex();
           if (highestPriorityTicketIndex) {
             ticket = this.needsAutomationStack.splice(highestPriorityTicketIndex, 1)[0];
           }
@@ -662,8 +664,8 @@ export class Simulation {
     // available time is determined.
     const targetDay = Math.floor(targetDayTime / this.dayLengthInMinutes)
     const targetTime = Math.floor(targetDayTime % this.dayLengthInMinutes)
-    for (let t of this.testers) {
-      for (let daySchedule of t.schedule.daySchedules) {
+    for (const t of this.testers) {
+      for (const daySchedule of t.schedule.daySchedules) {
         if (daySchedule.day > targetDay) {
           break;
         }
@@ -680,12 +682,12 @@ export class Simulation {
     }
   }
   getHighestPriorityCheckingWorkIndexForTester(tester: Tester): number | null {
-    let ownedTickets = tester.tickets.map((ticket) => ticket.number);
+    const ownedTickets = tester.tickets.map((ticket) => ticket.ticketNumber);
     return this.qaStack.reduce(
       (highestPriorityTicketIndex: number | null, currentTicket: Ticket, currentTicketIndex: number) => {
         // if the ticket.firstIteration is true, then the ticket hasn't been claimed by
         // a tester yet, so it's up for grabs.
-        if (ownedTickets.includes(currentTicket.number) || currentTicket.firstIteration) {
+        if (ownedTickets.includes(currentTicket.ticketNumber) || currentTicket.firstIteration) {
           if (!highestPriorityTicketIndex) {
             return currentTicketIndex;
           }
@@ -704,9 +706,9 @@ export class Simulation {
     // all together: this.workerDataForDayTime[321].cumulativeMinutes.contextSwitching
 
     for (let i = 0; i < this.totalSimulationMinutes; i++) {
-      let dataForWorkersAtThisDayTime: WorkerMinuteSnapshot[] = [];
-      for (let worker of this.workers) {
-        let minutes: WorkerMinuteSnapshot = {
+      const dataForWorkersAtThisDayTime: WorkerMinuteSnapshot[] = [];
+      for (const worker of this.workers) {
+        const minutes: WorkerMinuteSnapshot = {
           meeting: worker.getMeetingMinutesAtDayTime(i),
           contextSwitching: worker.getContextSwitchingMinutesAtDayTime(i),
           productiveTicketWork: worker.getProductiveTicketWorkMinutesAtDayTime(i),
@@ -733,10 +735,10 @@ export class Simulation {
         };
         dataForWorkersAtThisDayTime.push(minutes);
       }
-      let cumulativeMinutesForDayTime = dataForWorkersAtThisDayTime.reduce((accMinutes, workerMinutes) => {
+      const cumulativeMinutesForDayTime = dataForWorkersAtThisDayTime.reduce((accMinutes, workerMinutes) => {
         // must clone to avoid overwriting first WorkerMinuteSnapshot object
-        let newAccMinutes: WorkerMinuteSnapshot = { ...accMinutes };
-        for (let minuteName in workerMinutes) {
+        const newAccMinutes: WorkerMinuteSnapshot = { ...accMinutes };
+        for (const minuteName of Object.keys(workerMinutes)) {
           newAccMinutes[minuteName as keyof WorkerMinuteSnapshot] +=
             workerMinutes[minuteName as keyof WorkerMinuteSnapshot];
         }
@@ -752,9 +754,9 @@ export class Simulation {
     }
   }
   getPrettyFormattedDayTime(dayTime: number) {
-    let day: number = Math.floor(dayTime / this.dayLengthInMinutes) + 1;
-    let hour: number = (Math.floor(((dayTime % this.dayLengthInMinutes) + 1) / 60) + this.dayStartTime) % 12 || 12;
-    let minute: number = (dayTime + 1) % 60;
+    const day: number = Math.floor(dayTime / this.dayLengthInMinutes) + 1;
+    const hour: number = (Math.floor(((dayTime % this.dayLengthInMinutes) + 1) / 60) + this.dayStartTime) % 12 || 12;
+    const minute: number = (dayTime + 1) % 60;
     return `Day ${day} ${hour}:${minute < 10 ? 0 : ''}${minute}`;
   }
 }
