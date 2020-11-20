@@ -1,8 +1,19 @@
-import { Ticket } from "../ticket";
-import { WorkIteration } from "../workIteration";
-import { CustomEventsByDayList } from "../customEventsByDayList";
-import { SprintPlanning, DailyStandup, SprintRetro, ContextSwitchEvent, ScheduledCorePreviouslyInterruptedTicketCodeReviewWork, ScheduledCoreTicketCodeReviewWork, ScheduledRedundantPreviouslyInterruptedTicketCodeReviewWork, ScheduledRedundantNewTicketCodeReviewWork, ScheduledCorePreviouslyInterruptedTicketAutomationWork, ScheduledCoreTicketAutomationWork } from "../event";
-import { DaySchedule, QaSchedule, ProgrammerSchedule } from "./";
+import { Ticket } from '../ticket';
+import { WorkIteration } from '../workIteration';
+import { CustomEventsByDayList } from '../customEventsByDayList';
+import {
+  SprintPlanning,
+  DailyStandup,
+  SprintRetro,
+  ContextSwitchEvent,
+  ScheduledCorePreviouslyInterruptedTicketCodeReviewWork,
+  ScheduledCoreTicketCodeReviewWork,
+  ScheduledRedundantPreviouslyInterruptedTicketCodeReviewWork,
+  ScheduledRedundantNewTicketCodeReviewWork,
+  ScheduledCorePreviouslyInterruptedTicketAutomationWork,
+  ScheduledCoreTicketAutomationWork,
+} from '../event';
+import { DaySchedule, QaSchedule, ProgrammerSchedule } from './';
 
 export abstract class Schedule {
   daySchedules: DaySchedule[] = [];

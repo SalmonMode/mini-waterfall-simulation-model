@@ -1,4 +1,4 @@
-import { Meeting } from "./meeting";
+import { Meeting } from './meeting';
 
 export class LunchBreak extends Meeting {
   // Extends Meeting because meetings can be stacked back to back without having to

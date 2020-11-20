@@ -1,5 +1,5 @@
-import { AvailableTimeSlot } from "./availableTimeSlot";
-import { ScheduledEvent, LunchBreak, NothingEvent, ContextSwitchEvent } from "../event";
+import { AvailableTimeSlot } from './availableTimeSlot';
+import { ScheduledEvent, LunchBreak, NothingEvent, ContextSwitchEvent } from '../event';
 
 export class DaySchedule {
   items: ScheduledEvent[] = [];

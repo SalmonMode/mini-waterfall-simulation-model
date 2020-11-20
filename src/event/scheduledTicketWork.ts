@@ -1,6 +1,6 @@
-import { Ticket } from "../ticket";
-import { ContextSwitchEvent } from "./contextSwitchEvent";
-import { ScheduledEvent } from "./scheduledEvent";
+import { Ticket } from '../ticket';
+import { ContextSwitchEvent } from './contextSwitchEvent';
+import { ScheduledEvent } from './scheduledEvent';
 
 export class ScheduledTicketWork extends ScheduledEvent {
   // ScheduledTicketWork is work for a ticket that either a programmer or tester is

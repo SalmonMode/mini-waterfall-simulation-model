@@ -1,5 +1,5 @@
-import { Ticket, QaSchedule, ProgrammerSchedule, CustomEventsByDayList, ScheduledTicketWork } from "..";
-import { WorkerMinutes } from "./workerMinutes";
+import { Ticket, QaSchedule, ProgrammerSchedule, CustomEventsByDayList, ScheduledTicketWork } from '..';
+import { WorkerMinutes } from './workerMinutes';
 
 export abstract class Worker implements WorkerMinutes {
   tickets: Ticket[] = [];

@@ -1,4 +1,4 @@
-import { ScheduledEvent } from "./scheduledEvent";
+import { ScheduledEvent } from './scheduledEvent';
 
 export class NothingEvent extends ScheduledEvent {
   // Nothing is done during this period of time. This is solely used to make logic

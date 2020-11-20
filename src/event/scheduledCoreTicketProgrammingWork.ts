@@ -1,4 +1,4 @@
-import { ScheduledTicketProgrammingWork } from "./scheduledTicketProgrammingWork";
+import { ScheduledTicketProgrammingWork } from './scheduledTicketProgrammingWork';
 
 export class ScheduledCoreTicketProgrammingWork extends ScheduledTicketProgrammingWork {
   relevantMinutes = ['productiveTicketWorkMinutes', 'programmingMinutes', 'productiveProgrammingTicketWorkMinutes'];

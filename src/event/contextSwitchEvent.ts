@@ -1,5 +1,5 @@
-import { Ticket } from "../ticket";
-import { ScheduledEvent } from "./scheduledEvent";
+import { Ticket } from '../ticket';
+import { ScheduledEvent } from './scheduledEvent';
 
 export class ContextSwitchEvent extends ScheduledEvent {
   relevantMinutes = ['contextSwitchingMinutes'];

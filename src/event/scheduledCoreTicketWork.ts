@@ -1,4 +1,4 @@
-import { ScheduledTicketWork } from "./scheduledTicketWork";
+import { ScheduledTicketWork } from './scheduledTicketWork';
 
 export class ScheduledCoreTicketWork extends ScheduledTicketWork {
   // This is exactly like ScheduledTicketWork, except it can't be placed in between a

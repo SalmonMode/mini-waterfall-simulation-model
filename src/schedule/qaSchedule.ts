@@ -1,7 +1,13 @@
-import { Schedule } from "./schedule";
-import { Ticket } from "../ticket";
-import { CustomEventsByDayList } from "../customEventsByDayList";
-import { ScheduledCoreTicketCheckingWork, ScheduledRedundantNewTicketCheckingWork, ScheduledCorePreviouslyInterruptedTicketCheckingWork, ScheduledRedundantPreviouslyInterruptedTicketCheckingWork, RegressionTesting } from "../event";
+import { Schedule } from './schedule';
+import { Ticket } from '../ticket';
+import { CustomEventsByDayList } from '../customEventsByDayList';
+import {
+  ScheduledCoreTicketCheckingWork,
+  ScheduledRedundantNewTicketCheckingWork,
+  ScheduledCorePreviouslyInterruptedTicketCheckingWork,
+  ScheduledRedundantPreviouslyInterruptedTicketCheckingWork,
+  RegressionTesting,
+} from '../event';
 
 export class QaSchedule extends Schedule {
   scheduledCoreTicketWork = ScheduledCoreTicketCheckingWork;

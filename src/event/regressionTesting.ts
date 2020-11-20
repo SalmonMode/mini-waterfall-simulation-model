@@ -1,4 +1,4 @@
-import { ScheduledEvent } from "./scheduledEvent";
+import { ScheduledEvent } from './scheduledEvent';
 
 export class RegressionTesting extends ScheduledEvent {
   relevantMinutes = ['regressionTestingMinutes'];

@@ -1,5 +1,5 @@
-import { Worker } from "./worker";
-import { QaSchedule } from "../schedule";
+import { Worker } from './worker';
+import { QaSchedule } from '../schedule';
 
 export class Tester extends Worker {
   initializeSchedule() {

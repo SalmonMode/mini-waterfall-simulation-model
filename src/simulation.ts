@@ -375,7 +375,9 @@ export class Simulation {
   }
   get noAvailableWorkForTesters(): boolean {
     const availableTesters = this.testers.filter((t) => t.nextCheckInTime >= 0);
-    const claimableTicketNumbers = availableTesters.reduce((acc: Ticket[], t) => acc.concat(t.tickets), []).map((ticket) => ticket.ticketNumber);
+    const claimableTicketNumbers = availableTesters
+      .reduce((acc: Ticket[], t) => acc.concat(t.tickets), [])
+      .map((ticket) => ticket.ticketNumber);
     const availableTicketNumbers = [...this.qaStack, ...this.needsAutomationStack].map((ticket) => ticket.ticketNumber);
     return claimableTicketNumbers.filter((num) => availableTicketNumbers.includes(num)).length > 0;
   }
@@ -383,7 +385,10 @@ export class Simulation {
     return this.programmers.every((p) => p.nextCheckInTime < 0);
   }
   get remainingTestersHaveCheckInNow(): boolean {
-    return this.testers.map(t => t.nextCheckInTime).filter(t => t > 0).every(t => t === this.currentDayTime);
+    return this.testers
+      .map((t) => t.nextCheckInTime)
+      .filter((t) => t > 0)
+      .every((t) => t === this.currentDayTime);
   }
   getWorkerWithEarliestUpcomingCheckIn(): Tester | Programmer {
     // Skip ahead to the next relevant point in time. This will either be the
@@ -517,8 +522,7 @@ export class Simulation {
     for (const p of this.programmers) {
       if (p.nextAvailabilityCheckIn > 0 && p.nextAvailabilityCheckIn < this.currentDayTime) {
         throw new Error('Programmer is being left behind');
-      }
-      else if (p.nextAvailabilityCheckIn !== this.currentDayTime) {
+      } else if (p.nextAvailabilityCheckIn !== this.currentDayTime) {
         continue;
       }
       // can start new work
@@ -665,8 +669,8 @@ export class Simulation {
   backfillUntilDayTimeTesterScheduleForTimeTheySpentDoingNothing(targetDayTime: number) {
     // necessary to avoid logic issues towards the end of the sprint where next
     // available time is determined.
-    const targetDay = Math.floor(targetDayTime / this.dayLengthInMinutes)
-    const targetTime = Math.floor(targetDayTime % this.dayLengthInMinutes)
+    const targetDay = Math.floor(targetDayTime / this.dayLengthInMinutes);
+    const targetTime = Math.floor(targetDayTime % this.dayLengthInMinutes);
     for (const t of this.testers) {
       for (const daySchedule of t.schedule.daySchedules) {
         if (daySchedule.day > targetDay) {

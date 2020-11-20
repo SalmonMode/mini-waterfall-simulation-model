@@ -91,7 +91,12 @@ export class TicketFactory {
     const minimumWorkTimeInMinutes = 30;
     const sample = PD.rgamma(sampleCount, 3, 0.1).map((maxWorkTimeValue: number) => {
       const maxWorkTimePercentage = Math.min(maxWorkTimeValue / 100.0, 1);
-      return new WorkIteration(Math.min(Math.round(maxTimeInHours * maxWorkTimePercentage * 60) + minimumWorkTimeInMinutes, (maxTimeInHours * 60)));
+      return new WorkIteration(
+        Math.min(
+          Math.round(maxTimeInHours * maxWorkTimePercentage * 60) + minimumWorkTimeInMinutes,
+          maxTimeInHours * 60,
+        ),
+      );
     });
     return sample;
   }
@@ -118,7 +123,10 @@ export class TicketFactory {
     const sample = PD.rgamma(sampleCount, 1, 5).map((fixWorkTimeValue: number) => {
       const fixWorkTimePercentage = Math.min(fixWorkTimeValue / 100.0, 1);
       return new WorkIteration(
-        Math.min(Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes, baseWorkIteration.time),
+        Math.min(
+          Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes,
+          baseWorkIteration.time,
+        ),
       );
     });
     return sample;
@@ -131,7 +139,10 @@ export class TicketFactory {
     const sample = PD.rgamma(sampleCount, 1, 5).map((fixWorkTimeValue: number) => {
       const fixWorkTimePercentage = Math.min(fixWorkTimeValue / 100.0, 1);
       return new WorkIteration(
-        Math.min(Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes, baseWorkIteration.time),
+        Math.min(
+          Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes,
+          baseWorkIteration.time,
+        ),
       );
     });
     return sample;
@@ -148,7 +159,12 @@ export class TicketFactory {
     const minimumWorkTimeInMinutes = 5;
     const sample = PD.rgamma(sampleCount, 3, 0.1).map((maxWorkTimeValue: number) => {
       const maxWorkTimePercentage = Math.min(maxWorkTimeValue / 100.0, 1);
-      return new WorkIteration(Math.min(Math.round(this.maxCodeReviewTimeInHours * maxWorkTimePercentage * 60) + minimumWorkTimeInMinutes, (this.maxCodeReviewTimeInHours * 60)));
+      return new WorkIteration(
+        Math.min(
+          Math.round(this.maxCodeReviewTimeInHours * maxWorkTimePercentage * 60) + minimumWorkTimeInMinutes,
+          this.maxCodeReviewTimeInHours * 60,
+        ),
+      );
     });
     return sample;
   }

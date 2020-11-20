@@ -1,5 +1,5 @@
-import { Worker } from "./worker";
-import { ProgrammerSchedule } from "../schedule";
+import { Worker } from './worker';
+import { ProgrammerSchedule } from '../schedule';
 
 export class Programmer extends Worker {
   initializeSchedule() {
