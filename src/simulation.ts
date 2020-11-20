@@ -381,7 +381,7 @@ export class Simulation {
       .reduce((acc: Ticket[], t) => acc.concat(t.tickets), [])
       .map((ticket) => ticket.ticketNumber);
     const availableTicketNumbers = [...this.qaStack, ...this.needsAutomationStack].map((ticket) => ticket.ticketNumber);
-    return availableTicketNumbers.filter((num) => !unclaimableTicketNumbers.includes(num)).length > 0;
+    return availableTicketNumbers.filter((num) => !unclaimableTicketNumbers.includes(num)).length === 0;
   }
   get allProgrammersAreDoneForTheSprint(): boolean {
     return this.programmers.every((p) => p.nextCheckInTime < 0);
