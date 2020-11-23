@@ -630,19 +630,22 @@ export class Simulation {
         // can't accept new work
         continue;
       }
-      if (t.nextAvailabilityCheckIn <= this.currentDayTime) {
+      if (t.nextAvailabilityCheckIn < this.currentDayTime) {
+        this.backfillUntilDayTimeTesterScheduleForTimeTheySpentDoingNothing(this.currentDayTime);
+      }
+      if (t.nextAvailabilityCheckIn === this.currentDayTime) {
         // can start new work
         let ticket = null;
         if (this.qaStack.length > 0) {
           const highestPriorityTicketIndex = this.getHighestPriorityCheckingWorkIndexForTester(t);
-          if (highestPriorityTicketIndex) {
+          if (highestPriorityTicketIndex !== null) {
             ticket = this.qaStack.splice(highestPriorityTicketIndex, 1)[0];
           }
         }
         if (!ticket && this.needsAutomationStack.length > 0) {
           // automation takes a lower priority than checking by hand
           const highestPriorityTicketIndex = this.getHighestPriorityAutomationIndex();
-          if (highestPriorityTicketIndex) {
+          if (highestPriorityTicketIndex !== null) {
             ticket = this.needsAutomationStack.splice(highestPriorityTicketIndex, 1)[0];
           }
         }
@@ -697,14 +700,14 @@ export class Simulation {
         // if the ticket.firstIteration is true, then the ticket hasn't been claimed by
         // a tester yet, so it's up for grabs.
         if (ownedTickets.includes(currentTicket.ticketNumber) || currentTicket.firstIteration) {
-          if (!highestPriorityTicketIndex) {
+          if (highestPriorityTicketIndex === null) {
             return currentTicketIndex;
           }
           if (currentTicket.priority < this.qaStack[highestPriorityTicketIndex].priority) {
             return currentTicketIndex;
           }
         }
-        return highestPriorityTicketIndex!;
+        return highestPriorityTicketIndex;
       },
       null,
     );

@@ -19,7 +19,6 @@ export abstract class Schedule {
   daySchedules: DaySchedule[] = [];
   dayLengthInMinutes: number = 480;
   dayOfNextWorkIterationCompletion: number | null;
-  timeOfNextWorkIterationCompletion: number | null;
   lastTicketWorkedOn: Ticket | null;
   constructor(
     public sprintDayCount: number,
@@ -74,7 +73,6 @@ export abstract class Schedule {
       new SprintRetro(lastHourOfDay, 60, this.daySchedules.length - 1),
     );
     this.dayOfNextWorkIterationCompletion = null;
-    this.timeOfNextWorkIterationCompletion = null;
     this.lastTicketWorkedOn = null;
   }
 
@@ -208,7 +206,6 @@ export abstract class Schedule {
           firstIteration,
           finalIteration,
         );
-        this.timeOfNextWorkIterationCompletion = newWorkEvent.endTime;
       } else {
         // not enough time to complete the iteration
         newWorkEvent = new scheduledWorkClass(
