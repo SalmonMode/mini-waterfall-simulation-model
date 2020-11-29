@@ -121,7 +121,7 @@ export class TicketFactory {
     }
     const minimumWorkTimeInMinutes = 30;
     const sample = PD.rgamma(sampleCount, 1, 5).map((fixWorkTimeValue: number) => {
-      const fixWorkTimePercentage = Math.min(fixWorkTimeValue / 100.0, 1);
+      const fixWorkTimePercentage = fixWorkTimeValue / 100.0;
       return new WorkIteration(
         Math.min(
           Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes,
@@ -137,7 +137,7 @@ export class TicketFactory {
     }
     const minimumWorkTimeInMinutes = 5;
     const sample = PD.rgamma(sampleCount, 1, 5).map((fixWorkTimeValue: number) => {
-      const fixWorkTimePercentage = Math.min(fixWorkTimeValue / 100.0, 1);
+      const fixWorkTimePercentage = fixWorkTimeValue / 100.0;
       return new WorkIteration(
         Math.min(
           Math.round(baseWorkIteration.time * fixWorkTimePercentage * 60) + minimumWorkTimeInMinutes,
