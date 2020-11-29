@@ -33,13 +33,13 @@ export class TicketFactory {
     this.ticketsMade = 0;
   }
   generateTicket() {
+    const passBackCount = this.generateTicketPassBackCount();
     const initialProgrammerWorkTime = this.generateInitialProgrammerWorkTime();
     const fullRunTesterWorkTime = this.generateFullRunTesterWorkTime();
     const fullRunCodeReviewWorkTime = this.generateCodeReviewWorkIterationTime();
     const programmerWorkIterations = [initialProgrammerWorkTime];
     const testerWorkIterations = [];
     const programmerCodeReviewWorkIterations = [];
-    const passBackCount = this.generateTicketPassBackCount();
     programmerWorkIterations.push(...this.sampleFixWorkIterationTime(initialProgrammerWorkTime, passBackCount));
     programmerCodeReviewWorkIterations.push(
       ...this.sampleFixCodeReviewWorkIterationTime(fullRunCodeReviewWorkTime, passBackCount),
