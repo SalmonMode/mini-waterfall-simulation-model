@@ -472,9 +472,16 @@ export class Simulation {
         throw Error('Worker had no last worked on ticket');
       }
       p.schedule.lastTicketWorkedOn = null;
-      if (possiblyFinishedTicket.needsCodeReview) {
+      if (possiblyFinishedTicket.needsCodeReview && this.programmerCount > 1) {
+        // Code review is only applicable if there's another programmer to review any
+        // changes.
         this.codeReviewStack.push(possiblyFinishedTicket);
       } else {
+        if (this.programmerCount === 1) {
+          // There is no one to code review the programmers changes.
+          possiblyFinishedTicket.programmerCodeReviewWorkIterations.shift();
+          possiblyFinishedTicket.needsCodeReview = false;
+        }
         this.qaStack.push(possiblyFinishedTicket);
       }
       p.nextWorkIterationCompletionCheckIn = null;
