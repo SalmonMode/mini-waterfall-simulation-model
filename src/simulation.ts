@@ -238,7 +238,7 @@ export class Simulation {
           }
         }
       }
-      blocksForTesters.push({ tester: tester, nothingBlockSchedule: new NothingBlockSchedule(nothingEvents) });
+      blocksForTesters.push({ tester, nothingBlockSchedule: new NothingBlockSchedule(nothingEvents) });
     }
     return blocksForTesters;
   }
