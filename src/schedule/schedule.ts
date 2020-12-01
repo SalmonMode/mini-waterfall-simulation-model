@@ -99,10 +99,11 @@ export abstract class Schedule {
     // in the earliest available, viable time slot.
     this.lastTicketWorkedOn = ticket;
     const queue = this.getWorkIterationQueueFromTicket(ticket);
-    const workIteration = queue.shift();
-    if (!workIteration) {
+    const sourceWorkIteration = queue.shift();
+    if (!sourceWorkIteration) {
       throw new Error('No work iterations available');
     }
+    const workIteration = new WorkIteration(sourceWorkIteration.time);
     const needsCodeReview = !!ticket.needsCodeReview;
     const needsAutomation = !!ticket.needsAutomation;
     const firstIteration = ticket.firstIteration;
@@ -121,6 +122,7 @@ export abstract class Schedule {
       // last of the work for this work iteration would be scheduled.
       this.dayOfNextWorkIterationCompletion = this.earliestAvailableDayForWorkIndex;
       if (this.earliestAvailableDayForWorkIndex === -1) {
+        queue.unshift(workIteration);
         throw RangeError('Not enough time left in the sprint to finish this ticket');
       }
       const schedule = this.earliestAvailableDayScheduleForWork!;

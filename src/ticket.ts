@@ -11,6 +11,10 @@ export class Ticket {
   public fresh: boolean;
   public firstIteration: boolean = true;
   public unfinished: boolean = true;
+  public originalProgrammerWorkIterations: WorkIteration[];
+  public originalProgrammerCodeReviewWorkIterations: WorkIteration[];
+  public originalTesterWorkIterations: WorkIteration[];
+  public originalAutomationWorkIterations: WorkIteration[];
   constructor(
     public ticketNumber: number,
     public priority: number,
@@ -52,5 +56,9 @@ export class Ticket {
     // the very first for the ticket. For testers, this means any iteration that
     // wasn't the last iteration.
     this.fresh = true;
+    this.originalProgrammerWorkIterations = [...this.programmerWorkIterations];
+    this.originalProgrammerCodeReviewWorkIterations = [...this.programmerCodeReviewWorkIterations];
+    this.originalTesterWorkIterations = [...this.testerWorkIterations];
+    this.originalAutomationWorkIterations = [...this.automationWorkIterations];
   }
 }

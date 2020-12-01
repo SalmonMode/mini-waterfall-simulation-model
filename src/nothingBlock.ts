@@ -1,13 +1,11 @@
-import { AvailableTimeSlot } from './availableTimeSlot';
-import { ScheduledEvent, LunchBreak, NothingEvent, ContextSwitchEvent } from '../event';
-import { BaseDaySchedule } from './baseDaySchedule';
+import { AvailableTimeSlot } from './schedule/availableTimeSlot';
+import { ScheduledEvent, NothingEvent, ContextSwitchEvent } from './event';
+import { BaseDaySchedule } from './schedule/baseDaySchedule';
 
-export class DaySchedule extends BaseDaySchedule {
-  constructor(lunchTime: number, public day: number) {
+export class NothingBlockDaySchedule extends BaseDaySchedule {
+  constructor(public day: number, nothingEvent: NothingEvent) {
     super(day);
-    this.availableTimeSlots.push(new AvailableTimeSlot(null, 0, 480));
-    const lunch = new LunchBreak(lunchTime, 60, this.day);
-    this.scheduleMeeting(lunch);
+    this.availableTimeSlots.push(new AvailableTimeSlot(null, 0, nothingEvent.endTime - nothingEvent.startTime))
   }
 
   scheduleMeeting(event: ScheduledEvent) {

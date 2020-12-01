@@ -1,9 +1,12 @@
 import { CustomEventsByDayList } from './customEventsByDayList';
-import { NothingEvent } from './event';
+import { NothingEvent, ScheduledEvent } from './event';
+import { NothingBlockDaySchedule } from './nothingBlock';
+import { NothingBlockSchedule } from './nothingBlockSchedule';
 import { StackLogEntry } from './stackLogEntry';
 import { Ticket } from './ticket';
 import { TicketFactory } from './ticketFactory';
 import { Programmer, Tester } from './worker';
+import { WorkIteration } from './workIteration';
 
 interface WorkerMinuteSnapshot {
   meeting: number;
@@ -35,6 +38,11 @@ interface WorkerDataForDayTime {
   cumulativeMinutes: WorkerMinuteSnapshot;
   logEntry: StackLogEntry;
   prettyDayTime: string;
+}
+
+interface TesterNothingBlock {
+  tester: Tester;
+  nothingBlockSchedule: NothingBlockSchedule;
 }
 
 export class Simulation {
@@ -174,8 +182,186 @@ export class Simulation {
       this.generateStackLogEntriesForDayTimeRange(this.previousDayTime, logEndTime);
     }
     this.unfinishedStack.concat([...this.qaStack, ...this.passBackStack]);
+    this.mergeNothingMinutes();
     this.aggregateMinutesSpent();
     this.projectDeadlock();
+  }
+  mergeNothingMinutes() {
+    /*
+    It's possible for testers to have multiple NothingEvents in a line in their
+    schedules, due to how they may have to wait for work to become available. This will
+    merge those together into larger NothingEvents, which will make going back through
+    to see what they may have time to automated next sprint much easier.
+
+    This should only be called once the sprint has finished simulating, as it will
+    assume there's no available time slots to worry about.
+     */
+    for (const tester of this.testers) {
+      for (const daySchedule of tester.schedule.daySchedules) {
+        let eventIndex = 0;
+        while (eventIndex < daySchedule.items.length) {
+          const currEvent = daySchedule.items[eventIndex];
+          if (currEvent instanceof NothingEvent) {
+            let nextEventIndex = 0;
+            while (eventIndex + nextEventIndex < daySchedule.items.length) {
+              const nextEventInSequence = daySchedule.items[eventIndex + nextEventIndex];
+              nextEventIndex++;
+              if (!(nextEventInSequence instanceof NothingEvent)) {
+                break;
+              }
+            }
+            if (nextEventIndex === 1) {
+              // there was no sequence, so skip the replacement
+              continue;
+            }
+            const finalSequenceEvent = daySchedule.items[eventIndex + nextEventIndex - 1];
+            const replacementEvent = new NothingEvent(
+              currEvent.startTime,
+              finalSequenceEvent.endTime - currEvent.startTime,
+              currEvent.day,
+            );
+            daySchedule.items.splice(eventIndex, nextEventIndex, replacementEvent);
+          }
+          eventIndex++;
+        }
+      }
+    }
+  }
+  getNothingBlocksForTesters(): TesterNothingBlock[] {
+    const blocksForTesters = [];
+    for (const tester of this.testers) {
+      const nothingEvents = [];
+      for (const daySchedule of tester.schedule.daySchedules) {
+        for (const event of daySchedule.items) {
+          if (event instanceof NothingEvent && event.duration > 30) {
+            nothingEvents.push(event);
+          }
+        }
+      }
+      blocksForTesters.push({ tester: tester, nothingBlockSchedule: new NothingBlockSchedule(nothingEvents) });
+    }
+    return blocksForTesters;
+  }
+  predictTesterPaceForNextSprint(): number {
+    /*
+    Find out if the testers would be able to catch up to the programmers in the next
+    sprint, given the nothing time they had in this sprint.
+     */
+    const testerNothingBlocks = this.getNothingBlocksForTesters();
+    const doneButUnautomatedTickets = this.doneStack.filter((ticket) => !this.automatedStack.includes(ticket));
+    // const notDoableTickets: Ticket[] = [];
+    // const partiallyDoableTickets: Ticket[] = [];
+    // const doableTickets: Ticket[] = [];
+    let unaccountedForTesterMinutes = 0;
+
+    // for (const ticket of doneButUnautomatedTickets) {
+    //   let attempted = false;
+    //   for (const testerNothingBlock of testerNothingBlocks) {
+    //     const schedule = testerNothingBlock.nothingBlockSchedule;
+    //     if (schedule.earliestAvailableDayForWorkIndex < 0) {
+    //       continue;
+    //     }
+    //     const tester = testerNothingBlock.tester;
+    //     if (!tester.tickets.includes(ticket)) {
+    //       continue;
+    //     }
+    //     attempted = true;
+    //     if (ticket.programmerWorkIterations.length > ticket.testerWorkIterations.length || ticket.testerWorkIterations[0].started) {
+    //       // first testerWorkIteration is relevant
+    //       const iteration = ticket.testerWorkIterations[0];
+    //       try {
+    //         schedule.addWork(ticket, iteration);
+    //       } catch (err) {
+    //         if (!(err instanceof RangeError)) {
+    //           throw err;
+    //         }
+    //         partiallyDoableTickets.push(ticket)
+    //         break;
+    //       }
+    //     }
+    //     // attempt automation
+    //     const iteration = ticket.automationWorkIterations[0];
+    //     try {
+    //       schedule.addWork(ticket, iteration);
+    //     } catch (err) {
+    //       if (!(err instanceof RangeError)) {
+    //         throw err;
+    //       }
+    //       partiallyDoableTickets.push(ticket);
+    //       break;
+    //     }
+    //     doableTickets.push(ticket);
+    //   }
+    //   if (!attempted) {
+    //     notDoableTickets.push(ticket);
+    //   }
+    // }
+    // const unautomatedTickets = this.tickets.filter((ticket) => !this.automatedStack.includes(ticket));
+    for (const ticket of doneButUnautomatedTickets) {
+      // let attempted = false;
+      for (const testerNothingBlock of testerNothingBlocks) {
+        const schedule = testerNothingBlock.nothingBlockSchedule;
+        if (schedule.earliestAvailableDayForWorkIndex < 0) {
+          continue;
+        }
+        const tester = testerNothingBlock.tester;
+        if (!tester.tickets.includes(ticket)) {
+          continue;
+        }
+        // attempted = true;
+        // must first catch up the check with the programming, and then consider the
+        // percentage of progress made in programming, as this will be the percentage of
+        // automation that would also have to be completed.
+        const totalProgrammingTime: number = ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+          return acc + iter.originalTime;
+        }, 0);
+        const actualProgrammingTime: number = totalProgrammingTime - ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+          return acc + iter.time;
+        }, 0);
+        const progPercentage = actualProgrammingTime / totalProgrammingTime;
+        // const checkingCatchUpTime = totalCheckingTime - actualCheckingTime;
+        const relevantProgrammingIteration = ticket.originalProgrammerWorkIterations.reduce( (lastIter, nextIter) => {
+          return nextIter.started ? nextIter : lastIter;
+        })
+        const percentProgFinished = relevantProgrammingIteration.time / relevantProgrammingIteration.originalTime;
+        if (ticket.programmerWorkIterations.length > ticket.testerWorkIterations.length) {
+          // Checking needs to catch up
+          const relevantCheckingIteration = ticket.testerWorkIterations[0];
+          const checkingCatchUpTime = relevantCheckingIteration.time * percentProgFinished;
+          const catchUpIter = new WorkIteration(checkingCatchUpTime);
+          try {
+            schedule.addWork(ticket, catchUpIter);
+          } catch (err) {
+            if (!(err instanceof RangeError)) {
+              throw err;
+            }
+            unaccountedForTesterMinutes += catchUpIter.time;
+            unaccountedForTesterMinutes += Math.ceil(ticket.automationWorkIterations[0].time * progPercentage);
+            break;
+          }
+        }
+
+        // attempt automation
+        // multiple by iteration.time instead of originalTime, in case progress has
+        // already been made in automation.
+        const iteration =  new WorkIteration(Math.ceil(ticket.automationWorkIterations[0].time * progPercentage));
+        try {
+          schedule.addWork(ticket, iteration);
+        } catch (err) {
+          if (!(err instanceof RangeError)) {
+            throw err;
+          }
+          // partiallyDoableTickets.push(ticket);
+          unaccountedForTesterMinutes += iteration.time;
+          break;
+        }
+      }
+    }
+    const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.checking;
+    const totalAutomationMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.automation;
+    const totalNeededMinutesForTesters = totalCheckingMinutes + totalAutomationMinutes + unaccountedForTesterMinutes;
+    const initialGrowthRate = unaccountedForTesterMinutes / totalNeededMinutesForTesters;
+    return initialGrowthRate;
   }
   projectDeadlock() {
     /*
@@ -210,7 +396,7 @@ export class Simulation {
     When that point is reached, it would be unreasonable to expect the testers to even
     have the opportunity to try and check something, and thus, progress will be in a
     deadlock.
-    */
+     */
     if (this.doneStack.length === 0) {
       // Development was so inefficient that literally 0 tickets were finished in the
       // simulated sprint, which means there's not enough data to project into the
@@ -220,45 +406,74 @@ export class Simulation {
       this.secretProjectedSprintCountUntilDeadlock = Infinity;
       return;
     }
-    const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
-      .checking;
-    const totalSuccessfulCheckTime = this.doneStack.reduce(
-      (totalTime, currentTicket) => totalTime + currentTicket.fullTesterWorkIterationTime,
-      0,
-    );
-    const newManualCheckTimeEliminatedByAutomation = this.automatedStack.reduce(
-      (totalTime, currentTicket) => totalTime + currentTicket.fullTesterWorkIterationTime,
-      0,
-    );
-    // time spent checking tickets that wouldn't be finished this sprint
-    const fluffCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
-      .fluffChecking;
-    const percentageOfCheckTimeSpentOnFluffChecking = fluffCheckingMinutes / totalCheckingMinutes;
-    const newManualCheckTime = totalSuccessfulCheckTime - newManualCheckTimeEliminatedByAutomation;
-    if (newManualCheckTime <= 0 && fluffCheckingMinutes <= 0) {
+    const initialGrowthRate = this.predictTesterPaceForNextSprint();
+    if (initialGrowthRate === 0) {
       // configuration is theoretically sustainable, as it means all tickets that were
       // planned for a sprint were both completed and had the checking of them
-      // automated.
+      // automated, and any that weren't, had the potential to be in future sprints as
+      // the testers had enough down time in sizable enough chunks to get it done.
       this.secretProjectedSprintCountUntilDeadlock = null;
       return;
     }
+    const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.checking;
+    const totalAutomationMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.automation;
+    const totalTesterWorkMinutes = totalCheckingMinutes + totalAutomationMinutes;
 
-    const percentageOfCheckTimeSpentOnNewManualChecking = newManualCheckTime / totalCheckingMinutes;
-    let remainingCheckingMinutes = totalCheckingMinutes;
+    let remainingWorkingMinutes = totalTesterWorkMinutes;
     let sprintsUntilDeadlock = 0;
     const estimatedMinimumCheckTimePerTicket = this.maxFullRunTesterWorkTimeInHours * 60 * 0.25;
-    while (remainingCheckingMinutes > estimatedMinimumCheckTimePerTicket) {
+    while (remainingWorkingMinutes > estimatedMinimumCheckTimePerTicket) {
       const totalNewManualCheckTime = Math.ceil(
-        percentageOfCheckTimeSpentOnNewManualChecking * remainingCheckingMinutes,
+        initialGrowthRate * remainingWorkingMinutes,
       );
-      const totalNewFluffCheckTime = Math.ceil(percentageOfCheckTimeSpentOnFluffChecking * remainingCheckingMinutes);
+      // const totalNewFluffCheckTime = Math.ceil(percentageOfCheckTimeSpentOnFluffChecking * remainingWorkingMinutes);
       const projectedRefinedNewRegressionCheckMinutes = (1 - this.checkRefinement) * totalNewManualCheckTime;
 
-      remainingCheckingMinutes -= projectedRefinedNewRegressionCheckMinutes;
-      remainingCheckingMinutes -= totalNewFluffCheckTime;
+      remainingWorkingMinutes -= projectedRefinedNewRegressionCheckMinutes;
+      // remainingWorkingMinutes -= totalNewFluffCheckTime;
       sprintsUntilDeadlock++;
     }
     this.secretProjectedSprintCountUntilDeadlock = sprintsUntilDeadlock;
+
+    // const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
+    //   .checking;
+    // const totalSuccessfulCheckTime = this.doneStack.reduce(
+    //   (totalTime, currentTicket) => totalTime + currentTicket.fullTesterWorkIterationTime,
+    //   0,
+    // );
+    // const newManualCheckTimeEliminatedByAutomation = this.automatedStack.reduce(
+    //   (totalTime, currentTicket) => totalTime + currentTicket.fullTesterWorkIterationTime,
+    //   0,
+    // );
+    // // time spent checking tickets that wouldn't be finished this sprint
+    // const fluffCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
+    //   .fluffChecking;
+    // const percentageOfCheckTimeSpentOnFluffChecking = fluffCheckingMinutes / totalCheckingMinutes;
+    // const newManualCheckTime = totalSuccessfulCheckTime - newManualCheckTimeEliminatedByAutomation;
+    // if (newManualCheckTime <= 0 && fluffCheckingMinutes <= 0) {
+    //   // configuration is theoretically sustainable, as it means all tickets that were
+    //   // planned for a sprint were both completed and had the checking of them
+    //   // automated.
+    //   this.secretProjectedSprintCountUntilDeadlock = null;
+    //   return;
+    // }
+
+    // const percentageOfCheckTimeSpentOnNewManualChecking = newManualCheckTime / totalCheckingMinutes;
+    // let remainingCheckingMinutes = totalCheckingMinutes;
+    // let sprintsUntilDeadlock = 0;
+    // const estimatedMinimumCheckTimePerTicket = this.maxFullRunTesterWorkTimeInHours * 60 * 0.25;
+    // while (remainingCheckingMinutes > estimatedMinimumCheckTimePerTicket) {
+    //   const totalNewManualCheckTime = Math.ceil(
+    //     percentageOfCheckTimeSpentOnNewManualChecking * remainingCheckingMinutes,
+    //   );
+    //   const totalNewFluffCheckTime = Math.ceil(percentageOfCheckTimeSpentOnFluffChecking * remainingCheckingMinutes);
+    //   const projectedRefinedNewRegressionCheckMinutes = (1 - this.checkRefinement) * totalNewManualCheckTime;
+
+    //   remainingCheckingMinutes -= projectedRefinedNewRegressionCheckMinutes;
+    //   remainingCheckingMinutes -= totalNewFluffCheckTime;
+    //   sprintsUntilDeadlock++;
+    // }
+    // this.secretProjectedSprintCountUntilDeadlock = sprintsUntilDeadlock;
   }
   dayTimeFromDayAndTime(day: number, time: number) {
     // given a day and a time, return the dayTime
@@ -723,7 +938,6 @@ export class Simulation {
     // Example for getting time spent context switching at minute 321
     // worker 0: this.workerDataForDayTime[321].workers[0].contextSwitching
     // all together: this.workerDataForDayTime[321].cumulativeMinutes.contextSwitching
-
     for (let i = 0; i < this.totalSimulationMinutes; i++) {
       const dataForWorkersAtThisDayTime: WorkerMinuteSnapshot[] = [];
       for (const worker of this.workers) {

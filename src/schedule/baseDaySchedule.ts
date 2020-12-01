@@ -1,14 +1,11 @@
 import { AvailableTimeSlot } from './availableTimeSlot';
-import { ScheduledEvent, LunchBreak, NothingEvent, ContextSwitchEvent } from '../event';
-import { BaseDaySchedule } from './baseDaySchedule';
+import { ScheduledEvent, NothingEvent, ContextSwitchEvent } from '../event';
 
-export class DaySchedule extends BaseDaySchedule {
-  constructor(lunchTime: number, public day: number) {
-    super(day);
-    this.availableTimeSlots.push(new AvailableTimeSlot(null, 0, 480));
-    const lunch = new LunchBreak(lunchTime, 60, this.day);
-    this.scheduleMeeting(lunch);
-  }
+export class BaseDaySchedule {
+  items: ScheduledEvent[] = [];
+  availableTimeSlots: AvailableTimeSlot[] = [];
+
+  constructor(public day: number) {}
 
   scheduleMeeting(event: ScheduledEvent) {
     // assumes events are set first and were set in order
