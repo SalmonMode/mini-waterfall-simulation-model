@@ -212,6 +212,7 @@ export class Simulation {
             }
             if (nextEventIndex === 1) {
               // there was no sequence, so skip the replacement
+              eventIndex++;
               continue;
             }
             const finalSequenceEvent = daySchedule.items[eventIndex + nextEventIndex - 1];
