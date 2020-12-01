@@ -249,7 +249,7 @@ export class Simulation {
     sprint, given the nothing time they had in this sprint.
      */
     const testerNothingBlocks = this.getNothingBlocksForTesters();
-    const doneButUnautomatedTickets = this.doneStack.filter((ticket) => !this.automatedStack.includes(ticket));
+    // const doneButUnautomatedTickets = this.doneStack.filter((ticket) => !this.automatedStack.includes(ticket));
     // const notDoableTickets: Ticket[] = [];
     // const partiallyDoableTickets: Ticket[] = [];
     // const doableTickets: Ticket[] = [];
@@ -297,8 +297,8 @@ export class Simulation {
     //     notDoableTickets.push(ticket);
     //   }
     // }
-    // const unautomatedTickets = this.tickets.filter((ticket) => !this.automatedStack.includes(ticket));
-    for (const ticket of doneButUnautomatedTickets) {
+    const unautomatedTickets = this.tickets.filter((ticket) => !this.automatedStack.includes(ticket));
+    for (const ticket of unautomatedTickets) {
       // let attempted = false;
       for (const testerNothingBlock of testerNothingBlocks) {
         const schedule = testerNothingBlock.nothingBlockSchedule;

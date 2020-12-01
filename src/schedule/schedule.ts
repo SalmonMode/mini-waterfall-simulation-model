@@ -99,11 +99,10 @@ export abstract class Schedule {
     // in the earliest available, viable time slot.
     this.lastTicketWorkedOn = ticket;
     const queue = this.getWorkIterationQueueFromTicket(ticket);
-    const sourceWorkIteration = queue.shift();
-    if (!sourceWorkIteration) {
+    const workIteration = queue.shift();
+    if (!workIteration) {
       throw new Error('No work iterations available');
     }
-    const workIteration = new WorkIteration(sourceWorkIteration.time);
     const needsCodeReview = !!ticket.needsCodeReview;
     const needsAutomation = !!ticket.needsAutomation;
     const firstIteration = ticket.firstIteration;
