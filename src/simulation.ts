@@ -319,12 +319,20 @@ export class Simulation {
         const actualProgrammingTime: number = totalProgrammingTime - ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
           return acc + iter.time;
         }, 0);
-        const progPercentage = actualProgrammingTime / totalProgrammingTime;
+        const totalCodeReviewTime: number = ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+          return acc + iter.originalTime;
+        }, 0);
+        const actualCodeReviewTime: number = totalCodeReviewTime - ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+          return acc + iter.time;
+        }, 0);
+        const progPercentage = (actualProgrammingTime + actualCodeReviewTime) / (totalProgrammingTime + totalCodeReviewTime);
         // const checkingCatchUpTime = totalCheckingTime - actualCheckingTime;
         const relevantProgrammingIteration = ticket.originalProgrammerWorkIterations.reduce( (lastIter, nextIter) => {
           return nextIter.started ? nextIter : lastIter;
-        })
-        const percentProgFinished = relevantProgrammingIteration.time / relevantProgrammingIteration.originalTime;
+        });
+        const progIterIndex = ticket.originalProgrammerWorkIterations.indexOf(relevantProgrammingIteration);
+        const relevantCodeReviewIteration = ticket.originalProgrammerCodeReviewWorkIterations[progIterIndex];
+        const percentProgFinished = (relevantProgrammingIteration.time + relevantCodeReviewIteration.time) / (relevantProgrammingIteration.originalTime + relevantProgrammingIteration.originalTime);
         if (ticket.programmerWorkIterations.length > ticket.testerWorkIterations.length) {
           // Checking needs to catch up
           const relevantCheckingIteration = ticket.testerWorkIterations[0];
