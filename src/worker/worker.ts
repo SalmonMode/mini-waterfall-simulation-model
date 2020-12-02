@@ -256,10 +256,11 @@ export abstract class Worker implements WorkerMinutes {
       // work, and this can defer to the availability
       return availabilityCheckIn;
     }
-    // there is a chance that earliest day/time may be -1, but that would mean
-    // that there's no time left in the sprint, so there'd be no reason to check
-    // in on this worker. As a result, this evaluating to a negative number is
-    // expected as it can be used in other contexts.
+    // it's possible for the next availability check in to be negative, while there's
+    // still work to be processed for the worker.
+    if (availabilityCheckIn < 0) {
+      return iterationCompleteCheckIn;
+    }
     return Math.min(iterationCompleteCheckIn, availabilityCheckIn);
   }
 

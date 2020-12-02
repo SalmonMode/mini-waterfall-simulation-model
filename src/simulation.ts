@@ -366,37 +366,48 @@ export class Simulation {
   }
   projectDeadlock() {
     /*
-    For each of the tickets in the done stack, consider how much time it took to do a
-    complete successful check of the ones that weren't automated. Consider then how much
-    this time would be refined (according to this.checkRefinement), and this would be
-    the amount of additional time that needs to be allotted for regression checking.
+    Deadlock is when the amount of time needed for manual regression checks exceeds the
+    minimal amount of time necessary to reasonably make progress in checking any ticket.
+    When this amount of time is exceeded, then it is unreasonable to expect a tester to
+    be able to check anything at all.
 
-    Consider then the percentage of available checking time that was spent doing
-    complete check runs that wouldn't be automated. As the projection goes forward,
-    sprint by sprint, the amount of new manual regression checking time will be
-    subtracted from the remaining available check time, and the previously mentioned
-    percentage will be used to estimate how much manual checking time would need to be
-    factored in for how the regression checking period grows for the next sprint.
+    That minimal amount of time is defined as 25% the maximum potential full check time
+    configured.
 
-    In addition to this, when tickets aren't finished in a sprint and time was spent on
-    checking iterations of them, the testers will be unable to automate them, so this
-    checking time is lost and can't be saved through automation. It is essentially
-    fluff, and the percentage of checking time spent on this will be used to estimate
-    how much of the potential checking time would be lost each sprint. If all tickets
-    that are started in a sprint get finished, then this will be 0. But if it's not 0,
-    then it means the programmers are getting an opportunity to squeeze in additional
-    work that only applies to subsequent sprints and so it means that there's work the
-    testers can't get ahead of in the current sprint, so it will cost them time in the
-    future.
+    It is calculated by looking at how well testers can keep up with programmers, both
+    in terms of their respective work iterations, but also with regards to automating
+    their checks in addition to performing them manually. If the testers can keep up
+    with this, then the process is sustainable, but if they can't, then the amount the
+    fall behind by over the course of the sprint is used to estimate when a deadlock
+    would occur.
 
-    This will be projected forward, counting each sprint that could theoretically be
-    done, until the remaining available time for checks is less than it would take to
-    do a single checking iteration for a "small" ticket, which, for the purposes of this
-    projection, will be considered to be 25% of this.maxFullRunTesterWorkTimeInHours.
+    Here is how the deadlock projection is calculated:
 
-    When that point is reached, it would be unreasonable to expect the testers to even
-    have the opportunity to try and check something, and thus, progress will be in a
-    deadlock.
+    For all the unautomated tickets, find the amount of time it would take for the
+    tester to catch up to the programmer, in terms of work iterations. If the programmer
+    had made it partway through an iteration, then the percentage of the way they made
+    it through is the percentage the tester must also make it through the respective
+    check iteration.
+
+    Then, find the percentage of all the programming time completed by the programmer
+    for a ticket, across all iterations combined (even those not yet reached), and use
+    that same percentage to find out how much automation must also be done by the
+    tester.
+
+    If the tester could theoretically have the time for those work iterations, then the
+    process could be sustainable. To determine this, the amount of time testers spent
+    doing "nothing" over the course of the sprint will be looked at.
+
+    The blocks of "nothing" time are treated like completely free DaySchedules,
+    with no stand ups or even lunch breaks (as these blocks wouldn't overlap with those
+    events). Each day being as long as the associated uninterrupted NothingEvent. The
+    work iterations necessary to complete the tasks mentioned above will be played out
+    in these day schedules, to see whether or not the testers could have enough spare
+    time to complete the necessary tasks, and, if not, how much they fall behind by.
+
+    The rate at which they fall behind by is used to estimate the amount that the
+    regression check time grows by each sprint, as whatever they fall behind in, becomes
+    manual regression checks in future sprints.
      */
     if (this.doneStack.length === 0) {
       // Development was so inefficient that literally 0 tickets were finished in the
@@ -427,54 +438,12 @@ export class Simulation {
       const totalNewManualCheckTime = Math.ceil(
         initialGrowthRate * remainingWorkingMinutes,
       );
-      // const totalNewFluffCheckTime = Math.ceil(percentageOfCheckTimeSpentOnFluffChecking * remainingWorkingMinutes);
       const projectedRefinedNewRegressionCheckMinutes = (1 - this.checkRefinement) * totalNewManualCheckTime;
 
       remainingWorkingMinutes -= projectedRefinedNewRegressionCheckMinutes;
-      // remainingWorkingMinutes -= totalNewFluffCheckTime;
       sprintsUntilDeadlock++;
     }
     this.secretProjectedSprintCountUntilDeadlock = sprintsUntilDeadlock;
-
-    // const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
-    //   .checking;
-    // const totalSuccessfulCheckTime = this.doneStack.reduce(
-    //   (totalTime, currentTicket) => totalTime + currentTicket.fullTesterWorkIterationTime,
-    //   0,
-    // );
-    // const newManualCheckTimeEliminatedByAutomation = this.automatedStack.reduce(
-    //   (totalTime, currentTicket) => totalTime + currentTicket.fullTesterWorkIterationTime,
-    //   0,
-    // );
-    // // time spent checking tickets that wouldn't be finished this sprint
-    // const fluffCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes
-    //   .fluffChecking;
-    // const percentageOfCheckTimeSpentOnFluffChecking = fluffCheckingMinutes / totalCheckingMinutes;
-    // const newManualCheckTime = totalSuccessfulCheckTime - newManualCheckTimeEliminatedByAutomation;
-    // if (newManualCheckTime <= 0 && fluffCheckingMinutes <= 0) {
-    //   // configuration is theoretically sustainable, as it means all tickets that were
-    //   // planned for a sprint were both completed and had the checking of them
-    //   // automated.
-    //   this.secretProjectedSprintCountUntilDeadlock = null;
-    //   return;
-    // }
-
-    // const percentageOfCheckTimeSpentOnNewManualChecking = newManualCheckTime / totalCheckingMinutes;
-    // let remainingCheckingMinutes = totalCheckingMinutes;
-    // let sprintsUntilDeadlock = 0;
-    // const estimatedMinimumCheckTimePerTicket = this.maxFullRunTesterWorkTimeInHours * 60 * 0.25;
-    // while (remainingCheckingMinutes > estimatedMinimumCheckTimePerTicket) {
-    //   const totalNewManualCheckTime = Math.ceil(
-    //     percentageOfCheckTimeSpentOnNewManualChecking * remainingCheckingMinutes,
-    //   );
-    //   const totalNewFluffCheckTime = Math.ceil(percentageOfCheckTimeSpentOnFluffChecking * remainingCheckingMinutes);
-    //   const projectedRefinedNewRegressionCheckMinutes = (1 - this.checkRefinement) * totalNewManualCheckTime;
-
-    //   remainingCheckingMinutes -= projectedRefinedNewRegressionCheckMinutes;
-    //   remainingCheckingMinutes -= totalNewFluffCheckTime;
-    //   sprintsUntilDeadlock++;
-    // }
-    // this.secretProjectedSprintCountUntilDeadlock = sprintsUntilDeadlock;
   }
   dayTimeFromDayAndTime(day: number, time: number) {
     // given a day and a time, return the dayTime
@@ -624,58 +593,14 @@ export class Simulation {
     // that have already passed. If they are in the past, they must have already
     // been handled, or, in the case of the tester, they are waiting for work to
     // become available.
-    return this.workers.reduce((eWorker, nWorker) => {
-      // eWorker: Probable worker with earliest check-in
-      // nWorker: The next worker in the iteration.
-      // both workers have a check-in time this sprint, so determine which is earlier,
-      // provided both have relevant check-ins coming up.
-      if (eWorker.nextAvailabilityCheckIn <= this.currentDayTime) {
-        // Both of the eWorker's check-ins are in the past, or were just performed.
-        // Even if the next nWorker has no check-ins coming up, there will
-        // eventually be an nWorker that does, because it would be impossible for
-        // all workers to have check-ins in the past if not all had a -1 check-in.
-        return nWorker;
-      } else if (nWorker.nextAvailabilityCheckIn <= this.currentDayTime) {
-        // If eWorker check-ins are not entirely in the past, but nWorker's are,
-        // then eWorker moves because it's the only relevant worker in this
-        // comparison.
-        return eWorker;
+    return this.workers.reduce( (pw, nw) => {
+      if (pw.nextCheckInTime < nw.nextCheckInTime){
+        return pw;
       }
-      if (eWorker.nextAvailabilityCheckIn < eWorker.nextWorkIterationCompletionCheckIn!) {
-        throw new Error('No.');
+      if (nw.nextCheckInTime <= this.currentDayTime && nw instanceof Tester) {
+        return pw;
       }
-      // Both have check-ins coming up. Find each of their earliest upcoming check-ins
-      // and compare them to determine which worker moves forward.
-      // at least one of eWorker's check-ins would have to be coming up
-      let eWorkerRelevantCheckIn;
-      if (eWorker.nextWorkIterationCompletionCheckIn! > this.currentDayTime) {
-        // Worker has an upcoming work completion check-in. Work completion
-        // check-ins must always come before, or be at the same time as availability
-        // check-ins (or be null). If the completion check-in is earlier, then it must
-        // be the one we want. If it's at the same time as the availability check-in,
-        // then it doesn't matter which we use, so the logic is simpler if we defer to
-        // the completion check-in.
-        eWorkerRelevantCheckIn = eWorker.nextWorkIterationCompletionCheckIn!;
-      } else {
-        // The work completion check-in must have been in the past, leaving the
-        // availability check-in as the only upcoming check-in for this worker.
-        eWorkerRelevantCheckIn = eWorker.nextAvailabilityCheckIn;
-      }
-      let nWorkerRelevantCheckIn;
-      if (nWorker.nextWorkIterationCompletionCheckIn! > this.currentDayTime) {
-        // Worker has an upcoming work completion check-in. Work completion
-        // check-ins must always come before, or be at the same time as availability
-        // check-ins (or be null). If the completion check-in is earlier, then it must
-        // be the one we want. If it's at the same time as the availability check-in,
-        // then it doesn't matter which we use, so the logic is simpler if we defer to
-        // the completion check-in.
-        nWorkerRelevantCheckIn = nWorker.nextWorkIterationCompletionCheckIn!;
-      } else {
-        // The work completion check-in must have been in the past, leaving the
-        // availability check-in as the only upcoming check-in for this worker.
-        nWorkerRelevantCheckIn = nWorker.nextAvailabilityCheckIn;
-      }
-      return eWorkerRelevantCheckIn > nWorkerRelevantCheckIn ? nWorker : eWorker;
+      return nw;
     });
   }
   processProgrammerCompletedWork() {
