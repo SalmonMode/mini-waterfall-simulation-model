@@ -328,6 +328,7 @@ export class Simulation {
     const unclaimedCheckIterations = [...catchUpCheckItersPerTester[catchUpCheckItersPerTester.length - 1]];
     const unclaimedAutoIterations = catchUpAutoItersPerTester[catchUpAutoItersPerTester.length - 1];
     while (unclaimedCheckIterations.length > 0) {
+      // find tester with most free time
       const {tester, nothingBlockSchedule: schedule} = testerNothingBlocks.reduce(
         (prevB, nextB) => prevB.nothingBlockSchedule.availableTimeRemaining > nextB.nothingBlockSchedule.availableTimeRemaining ? prevB : nextB
       );
@@ -336,6 +337,23 @@ export class Simulation {
       // would have ended up doing the checks for it.
       const autoIterIndex = unclaimedAutoIterations.findIndex(obj => obj.ticket === ticket);
       const autoIter = unclaimedAutoIterations.splice(autoIterIndex, 1)[0];
+      const testerIndex = this.testers.indexOf(tester);
+      catchUpAutoItersPerTester[testerIndex].push(autoIter);
+      try {
+        schedule.addWork(ticket, iter);
+      } catch (err) {
+        if (!(err instanceof RangeError)) {
+          throw err;
+        }
+      }
+    }
+    while (unclaimedAutoIterations.length > 0) {
+      // find tester with most free time
+      const {tester, nothingBlockSchedule: schedule} = testerNothingBlocks.reduce(
+        (prevB, nextB) => prevB.nothingBlockSchedule.availableTimeRemaining > nextB.nothingBlockSchedule.availableTimeRemaining ? prevB : nextB
+      );
+      const autoIter = unclaimedAutoIterations.pop()!;
+      const {ticket, iter} = autoIter;
       const testerIndex = this.testers.indexOf(tester);
       catchUpAutoItersPerTester[testerIndex].push(autoIter);
       try {
