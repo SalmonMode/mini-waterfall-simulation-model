@@ -270,19 +270,19 @@ export class Simulation {
       // must first catch up the check with the programming, and then consider the
       // percentage of progress made in programming, as this will be the percentage of
       // automation that would also have to be completed.
-      const totalProgrammingTime: number = ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+      const totalProgrammingTimeForTicket: number = ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
         return acc + iter.originalTime;
       }, 0);
-      const actualProgrammingTime: number = totalProgrammingTime - ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+      const actualProgrammingTimeForTicket: number = totalProgrammingTimeForTicket - ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
         return acc + iter.time;
       }, 0);
-      const totalCodeReviewTime: number = ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+      const totalCodeReviewTimeForTicket: number = ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
         return acc + iter.originalTime;
       }, 0);
-      const actualCodeReviewTime: number = totalCodeReviewTime - ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+      const actualCodeReviewTimeForTicket: number = totalCodeReviewTimeForTicket - ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
         return acc + iter.time;
       }, 0);
-      const progPercentage = (actualProgrammingTime + actualCodeReviewTime) / (totalProgrammingTime + totalCodeReviewTime);
+      const progPercentage = (actualProgrammingTimeForTicket + actualCodeReviewTimeForTicket) / (totalProgrammingTimeForTicket + totalCodeReviewTimeForTicket);
       // const checkingCatchUpTime = totalCheckingTime - actualCheckingTime;
       const relevantProgrammingIteration = ticket.originalProgrammerWorkIterations.reduce( (lastIter, nextIter) => {
         return nextIter.started ? nextIter : lastIter;
@@ -304,9 +304,9 @@ export class Simulation {
         if (!tester || tester.tickets.includes(ticket)) {
           // doesn't belong to any testers
           if (catchUpCheckIter) {
-            catchUpCheckItersPerTester[i].push({ticket: ticket, iter: catchUpCheckIter});
+            catchUpCheckItersPerTester[i].push({ticket, iter: catchUpCheckIter});
           }
-          catchUpAutoItersPerTester[i].push({ticket: ticket, iter: catchUpAutoIter});
+          catchUpAutoItersPerTester[i].push({ticket, iter: catchUpAutoIter});
           break;
         }
       }
