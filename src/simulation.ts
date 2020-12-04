@@ -228,8 +228,8 @@ export class Simulation {
       }
     }
   }
-  getNothingBlocksForTesters(): TesterNothingBlock[] {
-    const blocksForTesters = [];
+  getNothingBlocksPerTesters(): TesterNothingBlock[] {
+    const blocksPerTesters = [];
     for (const tester of this.testers) {
       const nothingEvents = [];
       for (const daySchedule of tester.schedule.daySchedules) {
@@ -239,138 +239,180 @@ export class Simulation {
           }
         }
       }
-      blocksForTesters.push({ tester, nothingBlockSchedule: new NothingBlockSchedule(nothingEvents) });
+      blocksPerTesters.push({ tester, nothingBlockSchedule: new NothingBlockSchedule(nothingEvents) });
     }
-    return blocksForTesters;
+    return blocksPerTesters;
   }
   predictTesterPaceForNextSprint(): number {
     /*
     Find out if the testers would be able to catch up to the programmers in the next
     sprint, given the nothing time they had in this sprint.
      */
-    const testerNothingBlocks = this.getNothingBlocksForTesters();
-    // const doneButUnautomatedTickets = this.doneStack.filter((ticket) => !this.automatedStack.includes(ticket));
-    // const notDoableTickets: Ticket[] = [];
-    // const partiallyDoableTickets: Ticket[] = [];
-    // const doableTickets: Ticket[] = [];
-    let unaccountedForTesterMinutes = 0;
-
-    // for (const ticket of doneButUnautomatedTickets) {
-    //   let attempted = false;
-    //   for (const testerNothingBlock of testerNothingBlocks) {
-    //     const schedule = testerNothingBlock.nothingBlockSchedule;
-    //     if (schedule.earliestAvailableDayForWorkIndex < 0) {
-    //       continue;
-    //     }
-    //     const tester = testerNothingBlock.tester;
-    //     if (!tester.tickets.includes(ticket)) {
-    //       continue;
-    //     }
-    //     attempted = true;
-    //     if (ticket.programmerWorkIterations.length > ticket.testerWorkIterations.length || ticket.testerWorkIterations[0].started) {
-    //       // first testerWorkIteration is relevant
-    //       const iteration = ticket.testerWorkIterations[0];
-    //       try {
-    //         schedule.addWork(ticket, iteration);
-    //       } catch (err) {
-    //         if (!(err instanceof RangeError)) {
-    //           throw err;
-    //         }
-    //         partiallyDoableTickets.push(ticket)
-    //         break;
-    //       }
-    //     }
-    //     // attempt automation
-    //     const iteration = ticket.automationWorkIterations[0];
-    //     try {
-    //       schedule.addWork(ticket, iteration);
-    //     } catch (err) {
-    //       if (!(err instanceof RangeError)) {
-    //         throw err;
-    //       }
-    //       partiallyDoableTickets.push(ticket);
-    //       break;
-    //     }
-    //     doableTickets.push(ticket);
-    //   }
-    //   if (!attempted) {
-    //     notDoableTickets.push(ticket);
-    //   }
-    // }
+    const testerNothingBlocks = this.getNothingBlocksPerTesters();
     const unautomatedTickets = this.tickets.filter((ticket) => !this.automatedStack.includes(ticket));
-    for (const ticket of unautomatedTickets) {
-      // let attempted = false;
-      for (const testerNothingBlock of testerNothingBlocks) {
-        const schedule = testerNothingBlock.nothingBlockSchedule;
-        if (schedule.earliestAvailableDayForWorkIndex < 0) {
-          continue;
-        }
-        const tester = testerNothingBlock.tester;
-        if (!tester.tickets.includes(ticket)) {
-          continue;
-        }
-        // attempted = true;
-        // must first catch up the check with the programming, and then consider the
-        // percentage of progress made in programming, as this will be the percentage of
-        // automation that would also have to be completed.
-        const totalProgrammingTime: number = ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
-          return acc + iter.originalTime;
-        }, 0);
-        const actualProgrammingTime: number = totalProgrammingTime - ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
-          return acc + iter.time;
-        }, 0);
-        const totalCodeReviewTime: number = ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
-          return acc + iter.originalTime;
-        }, 0);
-        const actualCodeReviewTime: number = totalCodeReviewTime - ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
-          return acc + iter.time;
-        }, 0);
-        const progPercentage = (actualProgrammingTime + actualCodeReviewTime) / (totalProgrammingTime + totalCodeReviewTime);
-        // const checkingCatchUpTime = totalCheckingTime - actualCheckingTime;
-        const relevantProgrammingIteration = ticket.originalProgrammerWorkIterations.reduce( (lastIter, nextIter) => {
-          return nextIter.started ? nextIter : lastIter;
-        });
-        const progIterIndex = ticket.originalProgrammerWorkIterations.indexOf(relevantProgrammingIteration);
-        const relevantCodeReviewIteration = ticket.originalProgrammerCodeReviewWorkIterations[progIterIndex];
-        const percentProgFinished = (relevantProgrammingIteration.time + relevantCodeReviewIteration.time) / (relevantProgrammingIteration.originalTime + relevantProgrammingIteration.originalTime);
-        if (ticket.programmerWorkIterations.length > ticket.testerWorkIterations.length) {
-          // Checking needs to catch up
-          const relevantCheckingIteration = ticket.testerWorkIterations[0];
-          const checkingCatchUpTime = relevantCheckingIteration.time * percentProgFinished;
-          const catchUpIter = new WorkIteration(checkingCatchUpTime);
-          try {
-            schedule.addWork(ticket, catchUpIter);
-          } catch (err) {
-            if (!(err instanceof RangeError)) {
-              throw err;
-            }
-            unaccountedForTesterMinutes += catchUpIter.time;
-            unaccountedForTesterMinutes += Math.ceil(ticket.automationWorkIterations[0].time * progPercentage);
-            break;
-          }
-        }
+    const catchUpCheckItersPerTester: {ticket: Ticket, iter: WorkIteration}[][] = [];
+    for (const tester of this.testers) {
+      catchUpCheckItersPerTester.push([]);
+    }
+    // one more for unclaimed tickets
+    catchUpCheckItersPerTester.push([]);
+    const catchUpAutoItersPerTester: {ticket: Ticket, iter: WorkIteration}[][] = [];
+    for (const tester of this.testers) {
+      catchUpAutoItersPerTester.push([]);
+    }
+    // one more for unclaimed tickets
+    catchUpAutoItersPerTester.push([]);
 
-        // attempt automation
-        // multiple by iteration.time instead of originalTime, in case progress has
-        // already been made in automation.
-        const iteration =  new WorkIteration(Math.ceil(ticket.automationWorkIterations[0].time * progPercentage));
-        try {
-          schedule.addWork(ticket, iteration);
-        } catch (err) {
-          if (!(err instanceof RangeError)) {
-            throw err;
+    // Sort out the catch up work iterations based on the testers who are responsible
+    // for the associated tickets. And track which ones are associated with tickets that
+    // haven't been claimed by testers.
+    for (const ticket of unautomatedTickets) {
+      // must first catch up the check with the programming, and then consider the
+      // percentage of progress made in programming, as this will be the percentage of
+      // automation that would also have to be completed.
+      const totalProgrammingTime: number = ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+        return acc + iter.originalTime;
+      }, 0);
+      const actualProgrammingTime: number = totalProgrammingTime - ticket.originalProgrammerWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+        return acc + iter.time;
+      }, 0);
+      const totalCodeReviewTime: number = ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+        return acc + iter.originalTime;
+      }, 0);
+      const actualCodeReviewTime: number = totalCodeReviewTime - ticket.originalProgrammerCodeReviewWorkIterations.reduce( (acc: number, iter: WorkIteration) => {
+        return acc + iter.time;
+      }, 0);
+      const progPercentage = (actualProgrammingTime + actualCodeReviewTime) / (totalProgrammingTime + totalCodeReviewTime);
+      // const checkingCatchUpTime = totalCheckingTime - actualCheckingTime;
+      const relevantProgrammingIteration = ticket.originalProgrammerWorkIterations.reduce( (lastIter, nextIter) => {
+        return nextIter.started ? nextIter : lastIter;
+      });
+      const progIterIndex = ticket.originalProgrammerWorkIterations.indexOf(relevantProgrammingIteration);
+      const relevantCodeReviewIteration = ticket.originalProgrammerCodeReviewWorkIterations[progIterIndex];
+      const percentProgFinished = (relevantProgrammingIteration.time + relevantCodeReviewIteration.time) / (relevantProgrammingIteration.originalTime + relevantProgrammingIteration.originalTime);
+
+      let catchUpCheckIter: WorkIteration | null = null;
+      if (ticket.programmerWorkIterations.length > ticket.testerWorkIterations.length) {
+        // Checking needs to catch up
+        const relevantCheckingIteration = ticket.testerWorkIterations[0];
+        const checkingCatchUpTime = relevantCheckingIteration.time * percentProgFinished;
+        catchUpCheckIter = new WorkIteration(checkingCatchUpTime);
+      }
+      const catchUpAutoIter = new WorkIteration(Math.ceil(ticket.automationWorkIterations[0].time * progPercentage));
+      for (let i = 0; i < this.testers.length + 1; i++) {
+        const tester = this.testers[i];
+        if (!tester || tester.tickets.includes(ticket)) {
+          // doesn't belong to any testers
+          if (catchUpCheckIter) {
+            catchUpCheckItersPerTester[i].push({ticket: ticket, iter: catchUpCheckIter});
           }
-          // partiallyDoableTickets.push(ticket);
-          unaccountedForTesterMinutes += iteration.time;
+          catchUpAutoItersPerTester[i].push({ticket: ticket, iter: catchUpAutoIter});
           break;
         }
       }
     }
+    // try to schedule catch up check iterations
+    for (let i = 0; i < this.testers.length; i++) {
+      const schedule = testerNothingBlocks[i].nothingBlockSchedule;
+      try {
+        for (const {ticket, iter} of catchUpCheckItersPerTester[i]) {
+          schedule.addWork(ticket, iter);
+        }
+      } catch (err) {
+        if (!(err instanceof RangeError)) {
+          throw err;
+        }
+        break;
+      }
+    }
+    const unclaimedCheckIterations = [...catchUpCheckItersPerTester[catchUpCheckItersPerTester.length - 1]];
+    const unclaimedAutoIterations = catchUpAutoItersPerTester[catchUpAutoItersPerTester.length - 1];
+    while (unclaimedCheckIterations.length > 0) {
+      const {tester, nothingBlockSchedule: schedule} = testerNothingBlocks.reduce(
+        (prevB, nextB) => prevB.nothingBlockSchedule.availableTimeRemaining > nextB.nothingBlockSchedule.availableTimeRemaining ? prevB : nextB
+      );
+      const {ticket, iter} = unclaimedCheckIterations.pop()!;
+      // act as though the tester claimed the automation for this ticket, because they
+      // would have ended up doing the checks for it.
+      const autoIterIndex = unclaimedAutoIterations.findIndex(obj => obj.ticket === ticket);
+      const autoIter = unclaimedAutoIterations.splice(autoIterIndex, 1)[0];
+      const testerIndex = this.testers.indexOf(tester);
+      catchUpAutoItersPerTester[testerIndex].push(autoIter);
+      try {
+        schedule.addWork(ticket, iter);
+      } catch (err) {
+        if (!(err instanceof RangeError)) {
+          throw err;
+        }
+      }
+    }
+    if (unclaimedAutoIterations.length > 0) {
+      throw new Error("Some iters were not associated with testers, even though they should have been");
+    }
+    // try to schedule catch up automation iterations
+    for (let i = 0; i < this.testers.length; i++) {
+      const schedule = testerNothingBlocks[i].nothingBlockSchedule;
+      try {
+        for (const {ticket, iter} of catchUpAutoItersPerTester[i]) {
+          schedule.addWork(ticket, iter);
+        }
+      } catch (err) {
+        if (!(err instanceof RangeError)) {
+          throw err;
+        }
+        break;
+      }
+    }
+
     const totalCheckingMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.checking;
     const totalAutomationMinutes = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.automation;
-    const totalNeededMinutesForTesters = totalCheckingMinutes + totalAutomationMinutes + unaccountedForTesterMinutes;
-    const initialGrowthRate = unaccountedForTesterMinutes / totalNeededMinutesForTesters;
-    return initialGrowthRate;
+    const totalTesterWorkMinutes = totalCheckingMinutes + totalAutomationMinutes;
+    const leftoverCheckMinutes = catchUpCheckItersPerTester.reduce( (acc, testerIters) => {
+      return acc + testerIters.reduce( (iterAcc, {iter: iter}) => {
+        return iterAcc + iter.time;
+      }, 0);
+    }, 0);
+    const totalCheckingMinutesNeeded = totalCheckingMinutes + catchUpCheckItersPerTester.reduce( (acc, testerIters) => {
+      return acc + testerIters.reduce( (iterAcc, {iter: iter}) => {
+        return iterAcc + iter.originalTime;
+      }, 0);
+    }, 0);
+    const leftoverCheckRate = leftoverCheckMinutes / totalCheckingMinutesNeeded;
+    const leftoverAutoMinutes = catchUpAutoItersPerTester.reduce( (acc, testerIters) => {
+      return acc + testerIters.reduce( (iterAcc, {iter: iter}) => {
+        return iterAcc + iter.time;
+      }, 0);
+    }, 0);
+    const totalAutomationMinutesNeeded = totalAutomationMinutes + catchUpAutoItersPerTester.reduce( (acc, testerIters) => {
+      return acc + testerIters.reduce( (iterAcc, {iter: iter}) => {
+        return iterAcc + iter.originalTime;
+      }, 0);
+    }, 0);
+    const leftoverAutoRate = leftoverAutoMinutes / totalAutomationMinutesNeeded;
+
+    // This will represent the total number of minutes needed to reach for the manual
+    // regression checks to be fully required.
+    let allProgTimeForAllTickets = 0;
+    let allCRTimeForAllTickets = 0;
+    let allCheckTimeForAllTickets = 0;
+    this.tickets.forEach(t => {
+      allProgTimeForAllTickets += t.originalProgrammerWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
+      allCRTimeForAllTickets += t.originalProgrammerCodeReviewWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
+      allCheckTimeForAllTickets += t.originalProgrammerWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
+    });
+
+    const actualProgrammingTime = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.programming;
+    const actualCRTime = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.codeReview;
+    const actualCheckingTime = allCheckTimeForAllTickets - leftoverCheckMinutes;
+
+    const totalFullCheckTimeForAllTickets = this.tickets.reduce( (acc, t) => acc + t.fullTesterWorkIterationTime, 0);
+
+    const totalDevPercentageForAllTickets = (actualProgrammingTime + actualCRTime + actualCheckingTime) / (allProgTimeForAllTickets + allCRTimeForAllTickets + allCheckTimeForAllTickets)
+    const potentialNewRegMinutesPreRefinement = totalDevPercentageForAllTickets * totalFullCheckTimeForAllTickets;
+    const preRefinementRegCheckGrowthRate = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
+    const postRefinementRegCheckGrowthRate = preRefinementRegCheckGrowthRate * (1 - this.checkRefinement);
+    const growthRate = postRefinementRegCheckGrowthRate + leftoverCheckRate;
+    return growthRate;
   }
   projectDeadlock() {
     /*
@@ -414,8 +456,9 @@ export class Simulation {
     time to complete the necessary tasks, and, if not, how much they fall behind by.
 
     The rate at which they fall behind by is used to estimate the amount that the
-    regression check time grows by each sprint, as whatever they fall behind in, becomes
-    manual regression checks in future sprints.
+    regression check time grows by each sprint, as whatever they fall behind in, either
+    becomes manual regression checks in future sprints, or work they must catch up on by
+    taking time away from the next sprint.
      */
     if (this.doneStack.length === 0) {
       // Development was so inefficient that literally 0 tickets were finished in the

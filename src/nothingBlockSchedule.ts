@@ -8,6 +8,7 @@ import {
 import { DaySchedule } from './';
 import { BaseDaySchedule } from './schedule/baseDaySchedule';
 import { NothingBlockDaySchedule } from './nothingBlock';
+import { AvailableTimeSlot } from './schedule';
 
 export class NothingBlockSchedule {
   daySchedules: BaseDaySchedule[] = [];
@@ -74,5 +75,12 @@ export class NothingBlockSchedule {
       workIteration.time -= newWorkEvent.duration;
       schedule.scheduleMeeting(newWorkEvent);
     }
+  }
+  get availableTimeRemaining() {
+    return this.daySchedules.reduce((acc, ds) => {
+      return acc + ds.availableTimeSlots.reduce((tsAcc, ts) => {
+        return tsAcc + ts.duration;
+      }, 0);
+    }, 0);
   }
 }
