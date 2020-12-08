@@ -77,6 +77,7 @@ export class Simulation {
   previousTime: number | null = null;
   previousDayTime: number | null = null;
   workerDataForDayTime: WorkerDataForDayTime[] = [];
+  growthRate?: number;
   constructor(
     public sprintDayCount: number = 10,
     public regressionTestDayCount: number = 2,
@@ -430,6 +431,7 @@ export class Simulation {
     const preRefinementRegCheckGrowthRate = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
     const postRefinementRegCheckGrowthRate = preRefinementRegCheckGrowthRate * (1 - this.checkRefinement);
     const growthRate = postRefinementRegCheckGrowthRate + leftoverCheckRate;
+    this.growthRate = growthRate;
     return growthRate;
   }
   projectDeadlock() {
