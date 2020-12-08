@@ -663,13 +663,22 @@ export class Simulation {
     // been handled, or, in the case of the tester, they are waiting for work to
     // become available.
     return this.workers.reduce( (pw, nw) => {
-      if (pw.nextCheckInTime < nw.nextCheckInTime){
-        return pw;
+      let earliest = null;
+      if (pw.nextCheckInTime < 0) {
+        earliest = nw;
+      } else if (nw.nextCheckInTime < 0) {
+        earliest = pw;
+      } else if (nw.nextCheckInTime === this.currentDayTime && nw instanceof Tester) {
+        earliest = pw;
+      } else {
+        earliest = pw.nextCheckInTime < nw.nextCheckInTime ? pw : nw;
       }
-      if (nw.nextCheckInTime <= this.currentDayTime && nw instanceof Tester) {
-        return pw;
+
+      if (earliest.nextCheckInTime >= 0 && earliest.nextCheckInTime < this.currentDayTime) {
+        throw new Error('earliest worker is being left behind');
       }
-      return nw;
+
+      return earliest;
     });
   }
   processProgrammerCompletedWork() {
@@ -782,7 +791,7 @@ export class Simulation {
       } catch (err) {
         if (err instanceof RangeError) {
           // ran out of time in the sprint
-          p.nextWorkIterationCompletionCheckIn = -1;
+          p.nextWorkIterationCompletionCheckIn = null;
           this.unfinishedStack.push(ticket);
         } else {
           throw err;
@@ -879,7 +888,7 @@ export class Simulation {
         } catch (err) {
           if (err instanceof RangeError) {
             // ran out of time in the sprint
-            t.nextWorkIterationCompletionCheckIn = -1;
+            t.nextWorkIterationCompletionCheckIn = null;
             this.unfinishedStack.push(ticket);
           } else {
             throw err;
