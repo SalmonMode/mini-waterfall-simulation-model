@@ -77,7 +77,7 @@ export class Simulation {
   previousTime: number | null = null;
   previousDayTime: number | null = null;
   workerDataForDayTime: WorkerDataForDayTime[] = [];
-  growthRate?: number;
+  secretGrowthRate?: number;
   constructor(
     public sprintDayCount: number = 10,
     public regressionTestDayCount: number = 2,
@@ -117,6 +117,12 @@ export class Simulation {
       throw Error('Simulation must simulate to establish a projected deadlock');
     }
     return this.secretProjectedSprintCountUntilDeadlock;
+  }
+  get growthRate(): number {
+    if (this.secretGrowthRate === undefined) {
+      throw Error('Simulation must simulate to establish a growth rate');
+    }
+    return this.secretGrowthRate;
   }
   prepareWorkers() {
     const customEventsByDay = this.customEventsByDay!.slice();
@@ -431,7 +437,7 @@ export class Simulation {
     const preRefinementRegCheckGrowthRate = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
     const postRefinementRegCheckGrowthRate = preRefinementRegCheckGrowthRate * (1 - this.checkRefinement);
     const growthRate = postRefinementRegCheckGrowthRate + leftoverCheckRate;
-    this.growthRate = growthRate;
+    this.secretGrowthRate = growthRate;
     return growthRate;
   }
   projectDeadlock() {
