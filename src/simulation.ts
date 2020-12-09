@@ -422,7 +422,9 @@ export class Simulation {
     let allCheckTimeForAllTickets = 0;
     this.tickets.forEach(t => {
       allProgTimeForAllTickets += t.originalProgrammerWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
-      allCRTimeForAllTickets += t.originalProgrammerCodeReviewWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
+      if (this.programmerCount > 1) {
+        allCRTimeForAllTickets += t.originalProgrammerCodeReviewWorkIterations.reduce(function (acc, iter) { return acc + iter.originalTime; }, 0);
+      }
       allCheckTimeForAllTickets += t.originalProgrammerWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
     });
 
@@ -433,9 +435,10 @@ export class Simulation {
     const totalFullCheckTimeForAllTickets = this.tickets.reduce( (acc, t) => acc + t.fullTesterWorkIterationTime, 0);
 
     const totalDevPercentageForAllTickets = (actualProgrammingTime + actualCRTime + actualCheckingTime) / (allProgTimeForAllTickets + allCRTimeForAllTickets + allCheckTimeForAllTickets)
-    const potentialNewRegMinutesPreRefinement = totalDevPercentageForAllTickets * totalFullCheckTimeForAllTickets;
-    const preRefinementRegCheckGrowthRate = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
-    const postRefinementRegCheckGrowthRate = preRefinementRegCheckGrowthRate * (1 - this.checkRefinement);
+    var potentialNewRegMinutesPreRefinement = totalDevPercentageForAllTickets * totalFullCheckTimeForAllTickets;
+    var preRefinementRegCheckGrowthMinutes = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
+    var postRefinementRegCheckGrowthMinutes = preRefinementRegCheckGrowthMinutes * (1 - this.checkRefinement);
+    var postRefinementRegCheckGrowthRate = postRefinementRegCheckGrowthMinutes / totalTesterWorkMinutes;
     const growthRate = postRefinementRegCheckGrowthRate + leftoverCheckRate;
     this.secretGrowthRate = growthRate;
     return growthRate;
@@ -493,6 +496,7 @@ export class Simulation {
       // to Infinity to reflect that it would take so long to even get anything done in
       // the first place that it's not even worth considering.
       this.secretProjectedSprintCountUntilDeadlock = Infinity;
+      this.secretGrowthRate = Infinity;
       return;
     }
     const initialGrowthRate = this.predictTesterPaceForNextSprint();
