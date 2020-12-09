@@ -423,7 +423,7 @@ export class Simulation {
     this.tickets.forEach(t => {
       allProgTimeForAllTickets += t.originalProgrammerWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
       if (this.programmerCount > 1) {
-        allCRTimeForAllTickets += t.originalProgrammerCodeReviewWorkIterations.reduce(function (acc, iter) { return acc + iter.originalTime; }, 0);
+        allCRTimeForAllTickets += t.originalProgrammerCodeReviewWorkIterations.reduce((acc, iter) =>  acc + iter.originalTime, 0);
       }
       allCheckTimeForAllTickets += t.originalProgrammerWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
     });
