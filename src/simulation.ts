@@ -435,10 +435,10 @@ export class Simulation {
     const totalFullCheckTimeForAllTickets = this.tickets.reduce( (acc, t) => acc + t.fullTesterWorkIterationTime, 0);
 
     const totalDevPercentageForAllTickets = (actualProgrammingTime + actualCRTime + actualCheckingTime) / (allProgTimeForAllTickets + allCRTimeForAllTickets + allCheckTimeForAllTickets)
-    var potentialNewRegMinutesPreRefinement = totalDevPercentageForAllTickets * totalFullCheckTimeForAllTickets;
-    var preRefinementRegCheckGrowthMinutes = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
-    var postRefinementRegCheckGrowthMinutes = preRefinementRegCheckGrowthMinutes * (1 - this.checkRefinement);
-    var postRefinementRegCheckGrowthRate = postRefinementRegCheckGrowthMinutes / totalTesterWorkMinutes;
+    const potentialNewRegMinutesPreRefinement = totalDevPercentageForAllTickets * totalFullCheckTimeForAllTickets;
+    const preRefinementRegCheckGrowthMinutes = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
+    const postRefinementRegCheckGrowthMinutes = preRefinementRegCheckGrowthMinutes * (1 - this.checkRefinement);
+    const postRefinementRegCheckGrowthRate = postRefinementRegCheckGrowthMinutes / totalTesterWorkMinutes;
     const growthRate = postRefinementRegCheckGrowthRate + leftoverCheckRate;
     this.secretGrowthRate = growthRate;
     return growthRate;
