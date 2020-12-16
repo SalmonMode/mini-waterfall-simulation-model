@@ -15,6 +15,8 @@ export class Ticket {
   public originalProgrammerCodeReviewWorkIterations: WorkIteration[];
   public originalTesterWorkIterations: WorkIteration[];
   public originalAutomationWorkIterations: WorkIteration[];
+  catchUpCheckIterations: WorkIteration[] = [];
+  catchUpAutomationIterations: WorkIteration[] = [];
   constructor(
     public ticketNumber: number,
     public priority: number,

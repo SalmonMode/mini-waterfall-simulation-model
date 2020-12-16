@@ -306,6 +306,10 @@ export class Simulation {
         catchUpCheckIter = new WorkIteration(checkingCatchUpTime);
       }
       const catchUpAutoIter = new WorkIteration(Math.ceil(ticket.automationWorkIterations[0].time * progPercentage));
+      ticket.catchUpAutomationIterations.push(catchUpAutoIter);
+      if (catchUpCheckIter) {
+        ticket.catchUpCheckIterations.push(catchUpCheckIter);
+      }
       for (let i = 0; i < this.testers.length + 1; i++) {
         const tester = this.testers[i];
         if (!tester || tester.tickets.includes(ticket)) {
@@ -413,7 +417,7 @@ export class Simulation {
         return iterAcc + iter.originalTime;
       }, 0);
     }, 0);
-    const leftoverAutoRate = leftoverAutoMinutes / totalAutomationMinutesNeeded;
+    // const leftoverAutoRate = leftoverAutoMinutes / totalAutomationMinutesNeeded;
 
     // This will represent the total number of minutes needed to reach for the manual
     // regression checks to be fully required.
@@ -432,11 +436,37 @@ export class Simulation {
     const actualCRTime = this.workerDataForDayTime[this.workerDataForDayTime.length - 1].cumulativeMinutes.codeReview;
     const actualCheckingTime = allCheckTimeForAllTickets - leftoverCheckMinutes;
 
-    const totalFullCheckTimeForAllTickets = this.tickets.reduce( (acc, t) => acc + t.fullTesterWorkIterationTime, 0);
-
-    const totalDevPercentageForAllTickets = (actualProgrammingTime + actualCRTime + actualCheckingTime) / (allProgTimeForAllTickets + allCRTimeForAllTickets + allCheckTimeForAllTickets)
-    const potentialNewRegMinutesPreRefinement = totalDevPercentageForAllTickets * totalFullCheckTimeForAllTickets;
-    const preRefinementRegCheckGrowthMinutes = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
+    // const totalFullCheckTimeForAllTickets = this.tickets.reduce( (acc, t) => acc + t.fullTesterWorkIterationTime, 0);
+    let preRefinementRegCheckGrowthMinutes = 0;
+    for (const ticket of this.tickets) {
+      // const allProgWorkTime = ticket.originalProgrammerWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
+      // const allCRWorkTime = ticket.originalProgrammerCodeReviewWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
+      // const actualProgWorkTime = ticket.originalProgrammerWorkIterations.reduce((acc, iter) => acc + (iter.originalTime - iter.time), 0);
+      // const actualCRWorkTime = ticket.originalProgrammerCodeReviewWorkIterations.reduce((acc, iter) => acc + (iter.originalTime - iter.time), 0);
+      const allCheckWorkTime = ticket.originalTesterWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
+      const allAutomationWorkTime = ticket.originalAutomationWorkIterations.reduce((acc, iter) => acc + iter.originalTime, 0);
+      const catchUpCheckTime = ticket.catchUpCheckIterations.reduce((acc, iter) => acc + (iter.originalTime - iter.time), 0);
+      const catchUpAutoTime = ticket.catchUpAutomationIterations.reduce((acc, iter) => acc + (iter.originalTime - iter.time), 0);
+      const actualCheckWorkTime = catchUpCheckTime + ticket.originalTesterWorkIterations.reduce((acc, iter) => acc + (iter.originalTime - iter.time), 0);
+      const actualAutomationWorkTime = catchUpAutoTime + ticket.originalAutomationWorkIterations.reduce((acc, iter) => acc + (iter.originalTime - iter.time), 0);
+      // const allWorkTime = allProgWorkTime + allCRWorkTime + allCheckWorkTime;
+      // const actualWorkTime = actualProgWorkTime + actualCRWorkTime + actualCheckWorkTime;
+      const fullRegCheckTime = ticket.originalTesterWorkIterations[ticket.originalTesterWorkIterations.length - 1].originalTime;
+      // The tester is a potential bottleneck, so if they haven't made progress on a
+      // ticket at all (like what would be common if the tester was completely
+      // outnumbered by programmers churning out several changes to be checked before
+      // the tester could finish even one checking iteration), it should not be held
+      // against them in terms of regression growth rate. But it will count towards them
+      // in terms of leftover check work that would subtract from their overall
+      // available time in the next sprint.
+      const ticketProgress = actualCheckWorkTime / allCheckWorkTime;
+      const potentialNewRegMinutesPreRefinement = fullRegCheckTime * ticketProgress;
+      const leftoverAutoRate = (allAutomationWorkTime - actualAutomationWorkTime) / allAutomationWorkTime;
+      preRefinementRegCheckGrowthMinutes += potentialNewRegMinutesPreRefinement * leftoverAutoRate;
+    }
+    // const totalDevPercentageForAllTickets = (actualProgrammingTime + actualCRTime + actualCheckingTime) / (allProgTimeForAllTickets + allCRTimeForAllTickets + allCheckTimeForAllTickets)
+    // const potentialNewRegMinutesPreRefinement = totalDevPercentageForAllTickets * totalFullCheckTimeForAllTickets;
+    // const preRefinementRegCheckGrowthMinutes = potentialNewRegMinutesPreRefinement * leftoverAutoRate;
     const postRefinementRegCheckGrowthMinutes = preRefinementRegCheckGrowthMinutes * (1 - this.checkRefinement);
     const postRefinementRegCheckGrowthRate = postRefinementRegCheckGrowthMinutes / totalTesterWorkMinutes;
     const growthRate = postRefinementRegCheckGrowthRate + leftoverCheckRate;
